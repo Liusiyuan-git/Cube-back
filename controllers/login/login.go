@@ -39,7 +39,7 @@ func (c *Controller) UserLogin() {
 	if mode == "phone" {
 		phone := data["phone"]
 		code := data["code"]
-		msg, pass = L.LoginPhone(phone, code)
+		cubeId, msg, pass = L.LoginPhone(phone, code)
 	}
 	if pass {
 		sessionErr := c.SetSession("CubeId", cubeId)
@@ -48,6 +48,7 @@ func (c *Controller) UserLogin() {
 		}
 	}
 	result := make(map[string]interface{})
+	result["cubeId"] = cubeId
 	result["msg"] = msg
 	c.DataCallBack(result, pass)
 }
