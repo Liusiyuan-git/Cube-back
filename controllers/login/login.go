@@ -23,6 +23,21 @@ func (c *Controller) Prepare() {
 	}
 }
 
+func (c *Controller) LoginStatus() {
+	data := c.RequestBodyData()
+	mode := data["mode"]
+	if mode == "" {
+		session := c.GetSession("CubeId")
+		status := true
+		if session == nil {
+			status = false
+		}
+		result := make(map[string]interface{})
+		result["cubeId"] = session
+		c.DataCallBack(result, status)
+	}
+}
+
 var L = new(login.Login)
 
 func (c *Controller) UserLogin() {
