@@ -38,6 +38,15 @@ func (c *Controller) LoginStatus() {
 	}
 }
 
+func (c *Controller) CountExit() {
+	err := c.DelSession("CubeId")
+	result := make(map[string]interface{})
+	if err != nil {
+		log.Error(err)
+	}
+	c.DataCallBack(result, err == nil)
+}
+
 var L = new(login.Login)
 
 func (c *Controller) UserLogin() {
