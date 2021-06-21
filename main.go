@@ -6,6 +6,7 @@ import (
 	_ "Cube-back/models"
 	_ "Cube-back/redis"
 	_ "Cube-back/routers"
+	_ "Cube-back/ssh"
 	beego "github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/filter/cors"
 	"github.com/beego/beego/v2/server/web/session"
