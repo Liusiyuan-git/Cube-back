@@ -24,9 +24,9 @@ func DBValues(cmd string, args ...interface{}) (int64, []orm.Params, bool) {
 	return num, maps, true
 }
 
-func Update(s interface{}, keywords string) (int64, error) {
+func Update(s interface{}, keywords ...string) (int64, error) {
 	o := orm.NewOrm()
-	result, err := o.Update(s, keywords)
+	result, err := o.Update(s, keywords...)
 	if err != nil {
 		log.Error(err)
 	}
@@ -45,7 +45,7 @@ func Insert(s interface{}) (int64, error) {
 func init() {
 	conf := new(Conf)
 	configure.Get(&conf)
-	dataSource := "root:" + conf.DatabasePassword + "@tcp(" + conf.DatabaseIp + ":" + conf.DatabasePort + ")/cube?charset=utf8"
+	dataSource := "root:" + conf.DatabasePassword + "@tcp(" + conf.DatabaseIp + ":" + conf.DatabasePort + ")/cube?charset=utf8mb4"
 	errDriver := orm.RegisterDriver("mysql", orm.DRMySQL)
 	errDatabase := orm.RegisterDataBase("default", "mysql", dataSource)
 	if errDriver != nil {
@@ -55,6 +55,5 @@ func init() {
 	if errDatabase != nil {
 		log.Error(errDatabase)
 	}
-
 	log.Info("database init successfully")
 }
