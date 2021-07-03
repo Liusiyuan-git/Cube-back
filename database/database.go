@@ -33,6 +33,15 @@ func Update(s interface{}, keywords ...string) (int64, error) {
 	return result, err
 }
 
+func Delete(s interface{}, keywords ...string) (int64, error) {
+	o := orm.NewOrm()
+	result, err := o.Delete(s, keywords...)
+	if err != nil {
+		log.Error(err)
+	}
+	return result, err
+}
+
 func Insert(s interface{}) (int64, error) {
 	o := orm.NewOrm()
 	result, err := o.Insert(s)
