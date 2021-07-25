@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "Cube-back/database"
+	_ "Cube-back/gron"
 	_ "Cube-back/log"
 	_ "Cube-back/models"
 	_ "Cube-back/redis"
