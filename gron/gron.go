@@ -44,11 +44,19 @@ func cubeViewEachMonth() {
 	redis.Set(month, view)
 }
 
-func init() {
+func baseInformation() {
 	c := gron.New()
 	c.AddFunc(gron.Every(1*time.Second), func() {
 		cubeInformationUpdate()
 		cubeViewEachMonth()
 	})
+	c.AddFunc(gron.Every(1*time.Second), func() {
+		cubeInformationUpdate()
+		cubeViewEachMonth()
+	})
 	c.Start()
+}
+
+func init() {
+	baseInformation()
 }
