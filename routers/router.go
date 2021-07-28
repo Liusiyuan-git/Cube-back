@@ -6,6 +6,7 @@ import (
 	"Cube-back/controllers/draft"
 	"Cube-back/controllers/login"
 	"Cube-back/controllers/register"
+	"Cube-back/controllers/talk"
 	"Cube-back/controllers/user"
 	"Cube-back/log"
 	beego "github.com/beego/beego/v2/server/web"
@@ -34,12 +35,21 @@ func apiRegister() {
 			beego.NSRouter("/blog.collect", &blog.Controller{}, "post:BlogCollect"),
 			beego.NSRouter("/blog.comment.send", &blog.Controller{}, "post:BlogCommentSend"),
 			beego.NSRouter("/blog.collect.confirm", &blog.Controller{}, "post:BlogCollectConfirm"),
+			beego.NSRouter("/send.talk", &talk.Controller{}, "post:TalkSend"),
+			beego.NSRouter("/send.talk.comment", &talk.Controller{}, "post:TalkCommentSend"),
+			beego.NSRouter("/delete.talk.Comment", &talk.Controller{}, "post:TalkCommentDelete"),
+			beego.NSRouter("/cube.collection.get", &blog.Controller{}, "post:BlogCollectionGet"),
 		),
 		beego.NSNamespace("/common",
 			beego.NSRouter("/blog.get", &common.Controller{}, "post:BlogGet"),
 			beego.NSRouter("/blog.detail", &common.Controller{}, "post:BlogDetail"),
 			beego.NSRouter("/blog.like", &common.Controller{}, "post:BlogLike"),
 			beego.NSRouter("/blog.comment.get", &common.Controller{}, "post:BlogCommonGet"),
+			beego.NSRouter("/talk.get", &common.Controller{}, "post:TalkGet"),
+			beego.NSRouter("/talk.comment.get", &common.Controller{}, "post:TalkCommentGet"),
+			beego.NSRouter("/talk.like", &common.Controller{}, "post:TalkLike"),
+			beego.NSRouter("/cube.information.get", &common.Controller{}, "post:CubeInformationGet"),
+			beego.NSRouter("/cube.view.get", &common.Controller{}, "post:CubeViewGet"),
 		),
 	)
 	beego.AddNamespace(ns)
