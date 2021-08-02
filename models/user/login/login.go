@@ -4,6 +4,7 @@ import (
 	"Cube-back/database"
 	"Cube-back/models/common/crypt"
 	"Cube-back/models/user"
+	"Cube-back/redis"
 	"fmt"
 )
 
@@ -44,11 +45,17 @@ func (u *Login) CountConfirm(count string) (string, string, bool) {
 		if num > 0 && (maps[0]["email"] == count || maps[0]["name"] == count) {
 			password := fmt.Sprintf("%v", maps[0]["password"])
 			cubeId := fmt.Sprintf("%v", maps[0]["cube_id"])
+			userName := fmt.Sprintf("%v", maps[0]["name"])
+			sessionRedis(cubeId, userName)
 			return cubeId, password, true
 		} else {
 			return "", "账号不存在", false
 		}
 	}
+}
+
+func sessionRedis(cubeid, name string) {
+	redis.HSet("session", cubeid, name)
 }
 
 func PhoneConfirm(phone string) (string, string, bool) {
