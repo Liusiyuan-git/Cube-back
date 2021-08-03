@@ -42,14 +42,13 @@ func apiRegister() {
 		),
 		beego.NSNamespace("/common",
 			beego.NSRouter("/blog.get", &common.Controller{}, "post:BlogGet"),
+			beego.NSRouter("/forum.blog.get", &common.Controller{}, "post:BlogForumGet"),
 			beego.NSRouter("/blog.detail", &common.Controller{}, "post:BlogDetail"),
 			beego.NSRouter("/blog.like", &common.Controller{}, "post:BlogLike"),
 			beego.NSRouter("/blog.comment.get", &common.Controller{}, "post:BlogCommonGet"),
 			beego.NSRouter("/talk.get", &common.Controller{}, "post:TalkGet"),
 			beego.NSRouter("/talk.comment.get", &common.Controller{}, "post:TalkCommentGet"),
 			beego.NSRouter("/talk.like", &common.Controller{}, "post:TalkLike"),
-			beego.NSRouter("/cube.information.get", &common.Controller{}, "post:CubeInformationGet"),
-			beego.NSRouter("/cube.view.get", &common.Controller{}, "post:CubeViewGet"),
 		),
 	)
 	beego.AddNamespace(ns)
