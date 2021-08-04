@@ -4,7 +4,6 @@ import (
 	"Cube-back/models/blog"
 	"Cube-back/models/blogcomment"
 	"Cube-back/models/collect"
-	"Cube-back/models/cubeinformation"
 	"Cube-back/models/draft"
 	"Cube-back/models/talk"
 	"Cube-back/models/talkcomment"
@@ -21,7 +20,6 @@ func ModelRegister() {
 	orm.RegisterModel(new(blogcomment.BlogComment))
 	orm.RegisterModel(new(talk.Talk))
 	orm.RegisterModel(new(talkcomment.TalkComment))
-	orm.RegisterModel(new(cubeinformation.CubeInformation))
 	orm.RunCommand()
 }
 
