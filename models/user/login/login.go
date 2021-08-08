@@ -12,44 +12,44 @@ type Login struct {
 	user.User
 }
 
-func (u *Login) LoginCount(count, password string) (string, string, bool) {
-	cubeId, p, pass := u.CountConfirm(count)
+func (u *Login) LoginCount(count, password string) (string, string, string, bool) {
+	cubeId, p, userName, pass := u.CountConfirm(count)
 	if !pass {
-		return cubeId, p, false
+		return cubeId, p, "", false
 	}
 	pass = crypt.Confirm(password, p)
 	if !pass {
-		return cubeId, "密码错误", false
+		return cubeId, "密码错误", "", false
 	}
-	return cubeId, "", true
+	return cubeId, "", userName, true
 }
 
-func (u *Login) LoginPhone(phone, code string) (string, string, bool) {
+func (u *Login) LoginPhone(phone, code string) (string, string, string, bool) {
 	msg, pass := user.CodeCorrect(phone, code)
 	if !pass {
-		return "", msg, false
+		return "", "", msg, false
 	}
-	cubeId, msg, pass := PhoneConfirm(phone)
+	cubeId, userName, msg, pass := PhoneConfirm(phone)
 	if !pass {
-		return "", msg, false
+		return "", "", msg, false
 	}
-	return cubeId, "", true
+	return cubeId, userName, "", true
 }
 
-func (u *Login) CountConfirm(count string) (string, string, bool) {
+func (u *Login) CountConfirm(count string) (string, string, string, bool) {
 	cmd := "select * from user where email = ? or name = ?"
 	num, maps, pass := database.DBValues(cmd, count, count)
 	if !pass {
-		return "", "未知错误", false
+		return "", "未知错误", "", false
 	} else {
 		if num > 0 && (maps[0]["email"] == count || maps[0]["name"] == count) {
 			password := fmt.Sprintf("%v", maps[0]["password"])
 			cubeId := fmt.Sprintf("%v", maps[0]["cube_id"])
 			userName := fmt.Sprintf("%v", maps[0]["name"])
 			sessionRedis(cubeId, userName)
-			return cubeId, password, true
+			return cubeId, password, userName, true
 		} else {
-			return "", "账号不存在", false
+			return "", "账号不存在", "", false
 		}
 	}
 }
@@ -58,17 +58,18 @@ func sessionRedis(cubeid, name string) {
 	redis.HSet("session", cubeid, name)
 }
 
-func PhoneConfirm(phone string) (string, string, bool) {
+func PhoneConfirm(phone string) (string, string, string, bool) {
 	cmd := "select * from user where phone = ?"
 	num, maps, pass := database.DBValues(cmd, phone)
 	if !pass {
-		return "", "未知错误", false
+		return "", "", "未知错误", false
 	} else {
 		if num > 0 && maps[0]["phone"] == phone {
 			cubeId := fmt.Sprintf("%v", maps[0]["cube_id"])
-			return cubeId, "", true
+			userName := fmt.Sprintf("%v", maps[0]["name"])
+			return cubeId, userName, "", true
 		} else {
-			return "", "手机号不存在", false
+			return "", "", "手机号不存在", false
 		}
 	}
 }

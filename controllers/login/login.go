@@ -53,17 +53,18 @@ func (c *Controller) UserLogin() {
 	data := c.RequestBodyData()
 	mode := data["mode"]
 	cubeId := ""
+	userName := ""
 	msg := ""
 	pass := true
 	if mode == "count" {
 		count := data["count"]
 		password := data["password"]
-		cubeId, msg, pass = L.LoginCount(count, password)
+		cubeId, msg, userName, pass = L.LoginCount(count, password)
 	}
 	if mode == "phone" {
 		phone := data["phone"]
 		code := data["code"]
-		cubeId, msg, pass = L.LoginPhone(phone, code)
+		cubeId, userName, msg, pass = L.LoginPhone(phone, code)
 	}
 	if pass {
 		sessionErr := c.SetSession("CubeId", cubeId)
@@ -74,5 +75,6 @@ func (c *Controller) UserLogin() {
 	result := make(map[string]interface{})
 	result["cubeId"] = cubeId
 	result["msg"] = msg
+	result["userName"] = userName
 	c.DataCallBack(result, pass)
 }
