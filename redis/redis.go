@@ -17,9 +17,9 @@ type Conf struct {
 }
 
 const (
-	ip   = "81.68.121.120"
-	port = "6379"
-	pwd  = "201020120402ssS~"
+	ip   = "0"
+	port = "0"
+	pwd  = "0"
 	db   = 0
 )
 
