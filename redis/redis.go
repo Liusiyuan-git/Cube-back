@@ -16,13 +16,6 @@ type Conf struct {
 	Db            int
 }
 
-const (
-	ip   = "0"
-	port = "0"
-	pwd  = "0"
-	db   = 0
-)
-
 var client *redis.Client
 
 func timeSet(timeType string, timeLeft time.Duration) time.Duration {
