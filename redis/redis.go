@@ -48,6 +48,10 @@ func Set(key, value string) {
 	_ = client.Set(key, value, 0).Val()
 }
 
+func Del(key string) {
+	_ = client.Del(key).Val()
+}
+
 func Exists(key string) int64 {
 	status, err := client.Exists(key).Result()
 	if err != nil {
@@ -58,6 +62,21 @@ func Exists(key string) int64 {
 
 func HSet(key, field, value string) {
 	client.HSet(key, field, value).Val()
+}
+
+func HGetAll(key string) map[string]string {
+	val, err := client.HGetAll(key).Result()
+	if err != nil {
+		log.Error(err)
+	}
+	return val
+}
+
+func HDel(key, field string) {
+	_, err := client.HDel(key, field).Result()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func HGet(key, field string) string {

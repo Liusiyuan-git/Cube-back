@@ -4,7 +4,9 @@ import (
 	"Cube-back/database"
 	"Cube-back/models/common/crypt"
 	"Cube-back/models/user"
+	"Cube-back/redis"
 	"github.com/go-basic/uuid"
+	"strconv"
 )
 
 type Register struct {
@@ -24,7 +26,13 @@ func (r *Register) UserRegister(email, password, phone, code string) (string, bo
 	if err != nil {
 		return "注册失败，请稍后再试", false
 	}
+	userRedisUp()
 	return "", true
+}
+
+func userRedisUp() {
+	u, _ := strconv.Atoi(redis.Get("user"))
+	redis.Set("user", strconv.Itoa(u+1))
 }
 
 func registerParamsCheck(email, password, phone, code string) (string, bool) {
