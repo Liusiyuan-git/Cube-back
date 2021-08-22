@@ -2,6 +2,7 @@ package user
 
 import (
 	"Cube-back/controllers"
+	"Cube-back/models/collect"
 	"Cube-back/models/user"
 	"Cube-back/models/user/profile"
 	"fmt"
@@ -14,6 +15,7 @@ type Controller struct {
 }
 
 var P = new(profile.Profile)
+var collection = new(collect.Collect)
 
 func (c *Controller) VerificationCode() {
 	data := c.RequestBodyData()

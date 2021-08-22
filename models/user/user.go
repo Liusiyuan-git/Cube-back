@@ -11,7 +11,7 @@ import (
 
 type User struct {
 	Id       int
-	CubeId   string
+	CubeId   string `orm:"index;pk"`
 	Name     string
 	Email    string
 	Password string
