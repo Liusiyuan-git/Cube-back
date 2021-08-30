@@ -29,7 +29,9 @@ func (o *Controller) TalkCommentSend() {
 	talkid := data["id"]
 	cubeid := data["cubeid"]
 	count := data["comment"]
-	msg, pass := tc.TalkCommentSend(talkid, cubeid, text, count)
+	index := data["index"]
+	mode := data["mode"]
+	msg, pass := tc.TalkCommentSend(talkid, cubeid, index, text, count, mode)
 	result := make(map[string]interface{})
 	result["msg"] = msg
 	o.DataCallBack(result, pass)
