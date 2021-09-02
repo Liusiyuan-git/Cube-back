@@ -17,7 +17,8 @@ func (o *Controller) TalkSend() {
 	data := o.RequestBodyData()
 	text := data["text"]
 	cubeid := data["cubeid"]
-	msg, pass := b.TalkSend(cubeid, text)
+	images := data["images"]
+	msg, pass := b.TalkSend(cubeid, text, images)
 	result := make(map[string]interface{})
 	result["msg"] = msg
 	o.DataCallBack(result, pass)
