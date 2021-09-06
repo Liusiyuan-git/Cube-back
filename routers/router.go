@@ -50,6 +50,7 @@ func apiRegister() {
 			beego.NSRouter("/talk.comment.get", &common.Controller{}, "post:TalkCommentGet"),
 			beego.NSRouter("/talk.like", &common.Controller{}, "post:TalkLike"),
 			beego.NSRouter("/blog.comment.like", &common.Controller{}, "post:BlogCommonLike"),
+			beego.NSRouter("/profile.blog.get", &common.Controller{}, "post:ProfileBlogGet"),
 		),
 	)
 	beego.AddNamespace(ns)
