@@ -48,6 +48,7 @@ func (u *Login) CountConfirm(count string) (string, string, string, string, bool
 			userName := fmt.Sprintf("%v", maps[0]["name"])
 			image := fmt.Sprintf("%v", maps[0]["image"])
 			sessionRedis(cubeId, userName)
+			userImageRedis(cubeId, image)
 			return cubeId, password, userName, image, true
 		} else {
 			return "", "账号不存在", "", "", false
@@ -57,6 +58,10 @@ func (u *Login) CountConfirm(count string) (string, string, string, string, bool
 
 func sessionRedis(cubeid, name string) {
 	redis.HSet("session", cubeid, name)
+}
+
+func userImageRedis(cubeId, image string) {
+	redis.HSet("userImage", cubeId, image)
 }
 
 func PhoneConfirm(phone string) (string, string, string, string, bool) {
