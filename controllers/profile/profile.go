@@ -21,11 +21,11 @@ func (c *Controller) SendUserImage() {
 	c.DataCallBack(result, pass)
 }
 
-func (c *Controller) UserProfileGet() {
+func (c *Controller) UserIntroduceSend() {
 	data := c.RequestBodyData()
 	cubeId := data["cubeid"]
-	profile, pass := P.UserProfileGet(cubeId)
+	introduce := data["introduce"]
+	pass := P.UserIntroduceSend(cubeId, introduce)
 	result := make(map[string]interface{})
-	result["profile"] = profile
 	c.DataCallBack(result, pass)
 }
