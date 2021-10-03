@@ -29,3 +29,12 @@ func (c *Controller) UserIntroduceSend() {
 	result := make(map[string]interface{})
 	c.DataCallBack(result, pass)
 }
+
+func (c *Controller) UserProfileGet() {
+	data := c.RequestBodyData()
+	cubeId := data["cubeid"]
+	profile, pass := P.UserProfileGet(cubeId)
+	result := make(map[string]interface{})
+	result["profile"] = profile
+	c.DataCallBack(result, pass)
+}

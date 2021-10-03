@@ -5,6 +5,7 @@ import (
 	"Cube-back/log"
 	"Cube-back/models/common/crypt"
 	"Cube-back/models/user"
+	"Cube-back/redis"
 	"Cube-back/ssh"
 	"encoding/base64"
 	"encoding/json"
@@ -50,19 +51,24 @@ func (p *Profile) ProfileBlogGet(cubeId, page string) (interface{}, int64, bool)
 	return dataBlock, length, true
 }
 
-func (p *Profile) ProfileTalkGet(cubeId, page string) (interface{}, int64, bool) {
+func (p *Profile) ProfileTalkGet(cubeId, page string) (interface{}, interface{}, int64, string, bool) {
 	var dataBlock []map[string]interface{}
+	var countBox []string
+	var countBlock []interface{}
 	profileTalkData, length := profileTalkRedisGet(cubeId, page)
 	if len(profileTalkData) == 0 {
-		blogDb, length, pass := profileTalkDbGet(cubeId)
-		return blogDb, length, pass
+		talkDb, length, pass := profileTalkDbGet(cubeId)
+		return talkDb, countBlock, length, "db", pass
 	}
 	for _, item := range profileTalkData {
 		var m map[string]interface{}
 		json.Unmarshal([]byte(item), &m)
+		id := fmt.Sprintf("%v", m["id"])
+		countBox = append(countBox, id+"_like", id+"_comment")
 		dataBlock = append(dataBlock, m)
 	}
-	return dataBlock, length, true
+	countBlock = redis.HMGet("talk_like_and_comment", countBox)
+	return dataBlock, countBlock, length, "redis", true
 }
 
 func passwordParamsCheck(phone, password, code string) (string, bool, string) {
