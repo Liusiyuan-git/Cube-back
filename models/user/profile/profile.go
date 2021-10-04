@@ -119,9 +119,12 @@ func (p *Profile) UserProfileGet(cubeId string) (interface{}, bool) {
 		userProfileDb, pass := userProfileBlogDbGet(cubeId)
 		return userProfileDb, pass
 	}
-	var m map[string]interface{}
-	json.Unmarshal([]byte(profileData), &m)
-	return m, true
+	return profileData, true
+}
+
+func (p *Profile) UserImageUpdate(cubeId string) (interface{}, bool) {
+	profileData := userImageRedisGet(cubeId)
+	return profileData, true
 }
 
 func (p *Profile) UserIntroduceSend(cubeId, introduce string) bool {
@@ -130,6 +133,15 @@ func (p *Profile) UserIntroduceSend(cubeId, introduce string) bool {
 		return false
 	}
 	UserIntroduceRedisSend(cubeId, introduce)
+	return true
+}
+
+func (p *Profile) UserNameSend(cubeId, name string) bool {
+	pass := UserNameDbSend(cubeId, name)
+	if !pass {
+		return false
+	}
+	UserNameRedisSend(cubeId, name)
 	return true
 }
 

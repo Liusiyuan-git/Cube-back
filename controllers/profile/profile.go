@@ -30,11 +30,29 @@ func (c *Controller) UserIntroduceSend() {
 	c.DataCallBack(result, pass)
 }
 
+func (c *Controller) UserNameSend() {
+	data := c.RequestBodyData()
+	cubeId := data["cubeid"]
+	name := data["name"]
+	pass := P.UserNameSend(cubeId, name)
+	result := make(map[string]interface{})
+	c.DataCallBack(result, pass)
+}
+
 func (c *Controller) UserProfileGet() {
 	data := c.RequestBodyData()
 	cubeId := data["cubeid"]
 	profile, pass := P.UserProfileGet(cubeId)
 	result := make(map[string]interface{})
 	result["profile"] = profile
+	c.DataCallBack(result, pass)
+}
+
+func (c *Controller) UserImageUpdate() {
+	data := c.RequestBodyData()
+	cubeId := data["cubeid"]
+	image, pass := P.UserImageUpdate(cubeId)
+	result := make(map[string]interface{})
+	result["image"] = image
 	c.DataCallBack(result, pass)
 }
