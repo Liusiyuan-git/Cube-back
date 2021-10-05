@@ -64,6 +64,21 @@ func HSet(key, field, value string) {
 	client.HSet(key, field, value).Val()
 }
 
+func HIncrBy(key, field string, num int64) {
+	_, err := client.HIncrBy(key, field, num).Result()
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+func HMGet(key string, fields []string) []interface{} {
+	val, err := client.HMGet(key, fields...).Result()
+	if err != nil {
+		log.Error(err)
+	}
+	return val
+}
+
 func HGetAll(key string) map[string]string {
 	val, err := client.HGetAll(key).Result()
 	if err != nil {
@@ -102,6 +117,13 @@ func LPush(key string, value string) {
 	}
 }
 
+func LPop(key string) {
+	_, err := client.LPop(key).Result()
+	if err != nil {
+		log.Error(err)
+	}
+}
+
 func LLen(key string) int64 {
 	length, err := client.LLen(key).Result()
 	if err != nil {
@@ -131,6 +153,13 @@ func LIndex(key string, index int64) string {
 		log.Error(err)
 	}
 	return result
+}
+
+func LRem(key, value string) {
+	_, err := client.LRem(key, 1, value).Result()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func LSet(key string, index int64, value string) {
