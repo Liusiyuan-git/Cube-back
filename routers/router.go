@@ -5,6 +5,7 @@ import (
 	"Cube-back/controllers/common"
 	"Cube-back/controllers/draft"
 	"Cube-back/controllers/login"
+	"Cube-back/controllers/profile"
 	"Cube-back/controllers/register"
 	"Cube-back/controllers/talk"
 	"Cube-back/controllers/user"
@@ -39,6 +40,11 @@ func apiRegister() {
 			beego.NSRouter("/send.talk.comment", &talk.Controller{}, "post:TalkCommentSend"),
 			beego.NSRouter("/delete.talk.Comment", &talk.Controller{}, "post:TalkCommentDelete"),
 			beego.NSRouter("/cube.collection.get", &blog.Controller{}, "post:BlogCollectionGet"),
+			beego.NSRouter("/send.user.image", &profile.Controller{}, "post:SendUserImage"),
+			beego.NSRouter("/user.introduce.send", &profile.Controller{}, "post:UserIntroduceSend"),
+			beego.NSRouter("/user.name.send", &profile.Controller{}, "post:UserNameSend"),
+			beego.NSRouter("/user.profile.get", &profile.Controller{}, "post:UserProfileGet"),
+			beego.NSRouter("/user.image.update", &profile.Controller{}, "post:UserImageUpdate"),
 		),
 		beego.NSNamespace("/common",
 			beego.NSRouter("/blog.get", &common.Controller{}, "post:BlogGet"),
@@ -46,11 +52,15 @@ func apiRegister() {
 			beego.NSRouter("/blog.detail", &common.Controller{}, "post:BlogDetail"),
 			beego.NSRouter("/blog.like", &common.Controller{}, "post:BlogLike"),
 			beego.NSRouter("/blog.comment.get", &common.Controller{}, "post:BlogCommonGet"),
+			beego.NSRouter("/blog.view", &common.Controller{}, "post:BlogView"),
 			beego.NSRouter("/talk.get", &common.Controller{}, "post:TalkGet"),
 			beego.NSRouter("/talk.comment.get", &common.Controller{}, "post:TalkCommentGet"),
 			beego.NSRouter("/talk.like", &common.Controller{}, "post:TalkLike"),
 			beego.NSRouter("/blog.comment.like", &common.Controller{}, "post:BlogCommonLike"),
 			beego.NSRouter("/profile.blog.get", &common.Controller{}, "post:ProfileBlogGet"),
+			beego.NSRouter("/profile.talk.get", &common.Controller{}, "post:ProfileTalkGet"),
+			beego.NSRouter("/user.profile.get", &common.Controller{}, "post:UserProfileGet"),
+			beego.NSRouter("/collect.profile.get", &common.Controller{}, "post:CollectProfileGet"),
 		),
 	)
 	beego.AddNamespace(ns)
