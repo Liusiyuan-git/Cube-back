@@ -6,6 +6,8 @@ import (
 	"Cube-back/models/user"
 	"Cube-back/redis"
 	"encoding/json"
+	"fmt"
+	"strconv"
 )
 
 func profileBlogDbGet(cubeId string) (interface{}, int64, bool) {
@@ -71,6 +73,21 @@ func UserNameDbSend(cubeId, name string) bool {
 	return true
 }
 
+func profileCollectDbGet(cubeid string) (interface{}, int64, bool) {
+	key := "user_collect_" + cubeid
+	cmd := `SELECT b.id, b.cube_id, b.title, b.cover, b.date, b.title, b.label_type FROM collect a INNER JOIN blog b ON a.blog_id = b.id  AND a.cube_id = ? ORDER BY a.id DESC`
+	num, maps, pass := database.DBValues(cmd, cubeid)
+	if num != 0 && !pass {
+		for _, item := range maps {
+			bjson, _ := json.Marshal(item)
+			redisValue := string(bjson)
+			redis.RPush(key, redisValue)
+		}
+	}
+	redis.HSet("user_profile_"+cubeid, "collect", fmt.Sprintf("%v", num))
+	return maps, num, pass
+}
+
 func userProfileBlogDbGet(cubeId string) (interface{}, bool) {
 	data := make(map[string]interface{})
 	cmd := `select * from user where cube_id=?`
@@ -96,5 +113,50 @@ func userProfileBlogDbGet(cubeId string) (interface{}, bool) {
 		} else {
 			return "", false
 		}
+	}
+}
+
+func userCareDbGet(id string) (interface{}, bool) {
+	var careBox = []map[string]string{}
+	cmd := `SELECT * from care where care=?`
+	num, maps, pass := database.DBValues(cmd, id)
+	if !pass {
+		if num != 0 {
+			for _, item := range maps {
+				cubeid := fmt.Sprintf("%v", item["cared"])
+				profile := redis.HMGet("user_profile_"+cubeid, []string{"image", "name", "introduce"})
+				redis.HSet("user_care_"+id, cubeid, "1")
+				careBox = append(careBox, map[string]string{"cube_id": cubeid, "image": fmt.Sprintf("%v", profile[0]), "name": fmt.Sprintf("%v", profile[1]), "introduce": fmt.Sprintf("%v", profile[2])})
+			}
+		}
+		return careBox, true
+	}
+	return careBox, false
+}
+
+func userCareDbSet(id, cubeId string) {
+	careUpdate(id)
+	caredUpdate(cubeId)
+}
+
+func careUpdate(id string) {
+	care := redis.HGet("user_profile_"+id, "care")
+	u := new(user.User)
+	u.CubeId = id
+	u.Care, _ = strconv.Atoi(care)
+	_, err := database.Update(u, "care")
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+func caredUpdate(cubeId string) {
+	cared := redis.HGet("user_profile_"+cubeId, "cared")
+	u := new(user.User)
+	u.CubeId = cubeId
+	u.Care, _ = strconv.Atoi(cared)
+	_, err := database.Update(u, "care")
+	if err != nil {
+		log.Error(err)
 	}
 }

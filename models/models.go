@@ -3,6 +3,7 @@ package models
 import (
 	"Cube-back/models/blog"
 	"Cube-back/models/blogcomment"
+	"Cube-back/models/care"
 	"Cube-back/models/collect"
 	"Cube-back/models/draft"
 	"Cube-back/models/talk"
@@ -20,6 +21,7 @@ func ModelRegister() {
 	orm.RegisterModel(new(blogcomment.BlogComment))
 	orm.RegisterModel(new(talk.Talk))
 	orm.RegisterModel(new(talkcomment.TalkComment))
+	orm.RegisterModel(new(care.Care))
 	orm.RunCommand()
 }
 

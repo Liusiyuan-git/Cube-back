@@ -3,6 +3,7 @@ package profile
 import (
 	"Cube-back/database"
 	"Cube-back/log"
+	"Cube-back/models/care"
 	"Cube-back/models/common/crypt"
 	"Cube-back/models/user"
 	"Cube-back/redis"
@@ -71,6 +72,21 @@ func (p *Profile) ProfileTalkGet(cubeId, page string) (interface{}, interface{},
 	return dataBlock, countBlock, length, "redis", true
 }
 
+func (p *Profile) ProfileCollectGet(cubeId, page string) (interface{}, int64, bool) {
+	var dataBlock []map[string]interface{}
+	collectData, length := profileCollectRedisGet(cubeId, page)
+	if len(collectData) == 0 {
+		blogDb, length, pass := profileCollectDbGet(cubeId)
+		return blogDb, length, pass
+	}
+	for _, item := range collectData {
+		var m map[string]interface{}
+		json.Unmarshal([]byte(item), &m)
+		dataBlock = append(dataBlock, m)
+	}
+	return collectData, length, true
+}
+
 func passwordParamsCheck(phone, password, code string) (string, bool, string) {
 	var pass bool
 	var msg string
@@ -125,6 +141,64 @@ func (p *Profile) UserProfileGet(cubeId string) (interface{}, bool) {
 func (p *Profile) UserImageUpdate(cubeId string) (interface{}, bool) {
 	profileData := userImageRedisGet(cubeId)
 	return profileData, true
+}
+
+func (p *Profile) UserCareSet(id, cubeId string) (string, bool) {
+	c := new(care.Care)
+	c.Care = id
+	c.Cared = cubeId
+	_, err := database.Insert(c)
+	if err != nil {
+		log.Error(err)
+		return "未知错误", true
+	}
+	userCareRedisSet(id, cubeId)
+	userCareDbSet(id, cubeId)
+	return "", true
+}
+
+func (p *Profile) UserCareGet(id, cubeId string) (interface{}, bool) {
+	careRedisData := userCareRedisGet(id)
+	var careBox = []map[string]string{}
+	if len(careRedisData) == 0 {
+		userCareData, pass := userCareDbGet(id)
+		return userCareData, pass
+	}
+	for _, item := range careRedisData {
+		profile := redis.HMGet("user_profile_"+item, []string{"image", "name", "introduce"})
+		careBox = append(careBox, map[string]string{"cube_id": item, "image": fmt.Sprintf("%v", profile[0]), "name": fmt.Sprintf("%v", profile[1]), "introduce": fmt.Sprintf("%v", profile[2])})
+	}
+	return careBox, true
+}
+
+func (p *Profile) UserCareConfirm(id, cubeId string) (bool, bool) {
+	result := redis.HExists("user_care_"+id, cubeId)
+	if result {
+		return true, true
+	}
+	cmd := `select * from care where care=? and cared=?`
+	num, _, pass := database.DBValues(cmd, id, cubeId)
+	if pass {
+		if num != 0 {
+			return true, true
+		} else {
+			return false, true
+		}
+	} else {
+		return false, false
+	}
+}
+
+func (p *Profile) UserCareCancel(id, cubeId string) bool {
+	cmd := "DELETE FROM care where care=? and cared=?"
+	_, _, pass := database.DBValues(cmd, id, cubeId)
+	if !pass {
+		return false
+	} else {
+		redis.HDel("user_care_"+id, cubeId)
+		redis.HDel("user_cared_"+cubeId, id)
+		return true
+	}
 }
 
 func (p *Profile) UserIntroduceSend(cubeId, introduce string) bool {

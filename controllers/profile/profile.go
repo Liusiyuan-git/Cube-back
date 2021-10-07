@@ -56,3 +56,42 @@ func (c *Controller) UserImageUpdate() {
 	result["image"] = image
 	c.DataCallBack(result, pass)
 }
+
+func (c *Controller) UserCareSet() {
+	data := c.RequestBodyData()
+	id := data["id"]
+	cubeId := data["cubeid"]
+	msg, pass := P.UserCareSet(id, cubeId)
+	result := make(map[string]interface{})
+	result["msg"] = msg
+	c.DataCallBack(result, pass)
+}
+
+func (c *Controller) UserCareGet() {
+	data := c.RequestBodyData()
+	id := data["id"]
+	cubeId := data["cubeid"]
+	image, pass := P.UserCareGet(id, cubeId)
+	result := make(map[string]interface{})
+	result["image"] = image
+	c.DataCallBack(result, pass)
+}
+
+func (c *Controller) UserCareConfirm() {
+	data := c.RequestBodyData()
+	id := data["id"]
+	cubeId := data["cubeid"]
+	exist, pass := P.UserCareConfirm(id, cubeId)
+	result := make(map[string]interface{})
+	result["exist"] = exist
+	c.DataCallBack(result, pass)
+}
+
+func (c *Controller) UserCareCancel() {
+	data := c.RequestBodyData()
+	id := data["id"]
+	cubeId := data["cubeid"]
+	pass := P.UserCareCancel(id, cubeId)
+	result := make(map[string]interface{})
+	c.DataCallBack(result, pass)
+}
