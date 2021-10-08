@@ -160,3 +160,19 @@ func caredUpdate(cubeId string) {
 		log.Error(err)
 	}
 }
+
+func profileCareDbGet(cubeId string) (interface{}, bool) {
+	var careDataBox []map[string]interface{}
+	cmd := `SELECT * from care where care=?`
+	_, maps, pass := database.DBValues(cmd, cubeId)
+	if pass {
+		for _, item := range maps {
+			caredId := fmt.Sprintf("%v", item["cared"])
+			profile := redis.HMGet("user_profile_"+caredId, []string{"name", "image", "introduce"})
+			redis.HSet("user_care_"+cubeId, caredId, "1")
+			careDataBox = append(careDataBox, map[string]interface{}{"cube_id": caredId, "name": profile[0], "image": profile[1], "introduce": profile[2]})
+		}
+		return careDataBox, true
+	}
+	return careDataBox, false
+}

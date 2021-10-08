@@ -195,8 +195,8 @@ func (p *Profile) UserCareCancel(id, cubeId string) bool {
 	if !pass {
 		return false
 	} else {
-		redis.HDel("user_care_"+id, cubeId)
-		redis.HDel("user_cared_"+cubeId, id)
+		userCareRedisCancelSet(id, cubeId)
+		userCareDbSet(id, cubeId)
 		return true
 	}
 }
@@ -217,6 +217,15 @@ func (p *Profile) UserNameSend(cubeId, name string) bool {
 	}
 	UserNameRedisSend(cubeId, name)
 	return true
+}
+
+func (p *Profile) UserProfileCare(cubeId string) (interface{}, bool) {
+	profileCare := profileCareRedisGet(cubeId)
+	if len(profileCare) == 0 {
+		profileCare, pass := profileCareDbGet(cubeId)
+		return profileCare, pass
+	}
+	return profileCare, true
 }
 
 func imageSave(cubeid, image string) (string, string, bool) {

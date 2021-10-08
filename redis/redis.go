@@ -79,8 +79,23 @@ func HMGet(key string, fields []string) []interface{} {
 	return val
 }
 
+func HMSet(key string, fields map[string]interface{}) {
+	_, err := client.HMSet(key, fields).Result()
+	if err != nil {
+		log.Error(err)
+	}
+}
+
 func HGetAll(key string) map[string]string {
 	val, err := client.HGetAll(key).Result()
+	if err != nil {
+		log.Error(err)
+	}
+	return val
+}
+
+func HKeys(key string) []string {
+	val, err := client.HKeys(key).Result()
 	if err != nil {
 		log.Error(err)
 	}
