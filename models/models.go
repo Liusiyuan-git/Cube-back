@@ -6,6 +6,7 @@ import (
 	"Cube-back/models/care"
 	"Cube-back/models/collect"
 	"Cube-back/models/draft"
+	"Cube-back/models/leave"
 	"Cube-back/models/talk"
 	"Cube-back/models/talkcomment"
 	"Cube-back/models/user"
@@ -22,6 +23,7 @@ func ModelRegister() {
 	orm.RegisterModel(new(talk.Talk))
 	orm.RegisterModel(new(talkcomment.TalkComment))
 	orm.RegisterModel(new(care.Care))
+	orm.RegisterModel(new(leave.Leave))
 	orm.RunCommand()
 }
 

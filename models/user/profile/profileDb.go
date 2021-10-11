@@ -21,13 +21,13 @@ func profileBlogDbGet(cubeId string) (interface{}, int64, bool) {
 			redisValue := string(bjson)
 			redis.RPush(key, redisValue)
 		}
-		if len(maps) >= 10 {
+		if num >= 10 {
 			return maps[0:9], num, true
 		} else {
 			return maps[0:], num, true
 		}
 	}
-	return "", 0, false
+	return maps, num, pass
 }
 
 func profileTalkDbGet(cubeId string) (interface{}, int64, bool) {
@@ -40,13 +40,13 @@ func profileTalkDbGet(cubeId string) (interface{}, int64, bool) {
 			redisValue := string(bjson)
 			redis.RPush(key, redisValue)
 		}
-		if len(maps) >= 10 {
+		if num >= 10 {
 			return maps[0:9], num, true
 		} else {
 			return maps[0:], num, true
 		}
 	}
-	return "", 0, false
+	return maps, num, pass
 }
 
 func UserIntroduceDbSend(cubeId, introduce string) bool {
@@ -83,12 +83,16 @@ func profileCollectDbGet(cubeid string) (interface{}, int64, bool) {
 			redisValue := string(bjson)
 			redis.RPush(key, redisValue)
 		}
+		if num >= 10 {
+			return maps[0:9], num, true
+		} else {
+			return maps[0:], num, true
+		}
 	}
-	redis.HSet("user_profile_"+cubeid, "collect", fmt.Sprintf("%v", num))
 	return maps, num, pass
 }
 
-func userProfileBlogDbGet(cubeId string) (interface{}, bool) {
+func userProfileDbGet(cubeId string) (interface{}, bool) {
 	data := make(map[string]interface{})
 	cmd := `select * from user where cube_id=?`
 	_, maps, pass := database.DBValues(cmd, cubeId)
@@ -118,20 +122,19 @@ func userProfileBlogDbGet(cubeId string) (interface{}, bool) {
 
 func userCareDbGet(id string) (interface{}, bool) {
 	var careBox = []map[string]string{}
-	cmd := `SELECT * from care where care=?`
+	var cmd = `select a.cared, b.name, b.image, b.introduce FROM care a inner join user b on a.cared = b.cube_id and a.care = ? order by a.id desc`
 	num, maps, pass := database.DBValues(cmd, id)
-	if !pass {
-		if num != 0 {
-			for _, item := range maps {
-				cubeid := fmt.Sprintf("%v", item["cared"])
-				profile := redis.HMGet("user_profile_"+cubeid, []string{"image", "name", "introduce"})
-				redis.HSet("user_care_"+id, cubeid, "1")
-				careBox = append(careBox, map[string]string{"cube_id": cubeid, "image": fmt.Sprintf("%v", profile[0]), "name": fmt.Sprintf("%v", profile[1]), "introduce": fmt.Sprintf("%v", profile[2])})
-			}
+	if num != 0 && !pass {
+		for _, item := range maps {
+			cubeid := fmt.Sprintf("%v", item["cared"])
+			image := fmt.Sprintf("%v", item["image"])
+			name := fmt.Sprintf("%v", item["name"])
+			introduce := fmt.Sprintf("%v", item["introduce"])
+			redis.HSet("user_care_"+id, cubeid, "1")
+			careBox = append(careBox, map[string]string{"cube_id": cubeid, "image": image, "name": name, "introduce": introduce})
 		}
-		return careBox, true
 	}
-	return careBox, false
+	return careBox, pass
 }
 
 func userCareDbSet(id, cubeId string) {
@@ -163,16 +166,34 @@ func caredUpdate(cubeId string) {
 
 func profileCareDbGet(cubeId string) (interface{}, bool) {
 	var careDataBox []map[string]interface{}
-	cmd := `SELECT * from care where care=?`
-	_, maps, pass := database.DBValues(cmd, cubeId)
-	if pass {
+	var cmd = `select a.cared, b.name, b.image, b.introduce FROM care a inner join user b on a.cared = b.cube_id and a.care = ? order by a.id desc`
+	num, maps, pass := database.DBValues(cmd, cubeId)
+	if num != 0 && pass {
 		for _, item := range maps {
 			caredId := fmt.Sprintf("%v", item["cared"])
-			profile := redis.HMGet("user_profile_"+caredId, []string{"name", "image", "introduce"})
+			image := fmt.Sprintf("%v", item["image"])
+			name := fmt.Sprintf("%v", item["name"])
+			introduce := fmt.Sprintf("%v", item["introduce"])
 			redis.HSet("user_care_"+cubeId, caredId, "1")
-			careDataBox = append(careDataBox, map[string]interface{}{"cube_id": caredId, "name": profile[0], "image": profile[1], "introduce": profile[2]})
+			careDataBox = append(careDataBox, map[string]interface{}{"cube_id": caredId, "name": name, "image": image, "introduce": introduce})
 		}
-		return careDataBox, true
 	}
-	return careDataBox, false
+	return careDataBox, pass
+}
+
+func profileCaredDbGet(cubeId string) (interface{}, bool) {
+	var careDataBox []map[string]interface{}
+	var cmd = `select a.care, b.name, b.image, b.introduce FROM care a inner join user b on a.care = b.cube_id and a.cared = ? order by a.id desc`
+	num, maps, pass := database.DBValues(cmd, cubeId)
+	if num != 0 && pass {
+		for _, item := range maps {
+			careId := fmt.Sprintf("%v", item["care"])
+			image := fmt.Sprintf("%v", item["image"])
+			name := fmt.Sprintf("%v", item["name"])
+			introduce := fmt.Sprintf("%v", item["introduce"])
+			redis.HSet("user_care_"+cubeId, careId, "1")
+			careDataBox = append(careDataBox, map[string]interface{}{"cube_id": careId, "name": name, "image": image, "introduce": introduce})
+		}
+	}
+	return careDataBox, pass
 }

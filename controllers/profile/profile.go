@@ -2,6 +2,7 @@ package profile
 
 import (
 	"Cube-back/controllers/login"
+	"Cube-back/models/leave"
 	"Cube-back/models/user/profile"
 )
 
@@ -10,6 +11,7 @@ type Controller struct {
 }
 
 var P = new(profile.Profile)
+var l = new(leave.Leave)
 
 func (c *Controller) SendUserImage() {
 	data := c.RequestBodyData()
@@ -92,6 +94,16 @@ func (c *Controller) UserCareCancel() {
 	id := data["id"]
 	cubeId := data["cubeid"]
 	pass := P.UserCareCancel(id, cubeId)
+	result := make(map[string]interface{})
+	c.DataCallBack(result, pass)
+}
+
+func (c *Controller) ProfileLeaveSet() {
+	data := c.RequestBodyData()
+	cubeId := data["cubeId"]
+	profileId := data["profileId"]
+	text := data["text"]
+	pass := l.LeaveSet(cubeId, profileId, text)
 	result := make(map[string]interface{})
 	c.DataCallBack(result, pass)
 }

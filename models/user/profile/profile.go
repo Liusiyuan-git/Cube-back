@@ -132,7 +132,7 @@ func (p *Profile) SendUserImage(cubeid, image string) (string, bool) {
 func (p *Profile) UserProfileGet(cubeId string) (interface{}, bool) {
 	profileData := userProfileRedisGet(cubeId)
 	if profileData == "" {
-		userProfileDb, pass := userProfileBlogDbGet(cubeId)
+		userProfileDb, pass := userProfileDbGet(cubeId)
 		return userProfileDb, pass
 	}
 	return profileData, true
@@ -226,6 +226,15 @@ func (p *Profile) UserProfileCare(cubeId string) (interface{}, bool) {
 		return profileCare, pass
 	}
 	return profileCare, true
+}
+
+func (p *Profile) UserProfileCared(cubeId string) (interface{}, bool) {
+	profileCared := profileCaredRedisGet(cubeId)
+	if len(profileCared) == 0 {
+		profileCared, pass := profileCaredDbGet(cubeId)
+		return profileCared, pass
+	}
+	return profileCared, true
 }
 
 func imageSave(cubeid, image string) (string, string, bool) {
