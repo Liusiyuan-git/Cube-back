@@ -19,7 +19,7 @@ func TalkCommentRedisGet(talkId, page string) (interface{}, int64) {
 	return dataBlock, l
 }
 
-func TalkCommentRedisSend(id int64, talkid, index, mode, commentCount string, talkComment TalkComment) {
+func TalkCommentRedisSend(id int64, talkid string, talkComment TalkComment) {
 	b := make(map[string]interface{})
 	userName := redis.HGet("session", talkComment.CubeId)
 	b["id"] = id
@@ -28,26 +28,11 @@ func TalkCommentRedisSend(id int64, talkid, index, mode, commentCount string, ta
 	b["cube_id"] = talkComment.CubeId
 	b["comment"] = talkComment.Comment
 	b["date"] = talkComment.Date
+	b["user_image"] = redis.HGet("user_profile_"+talkComment.CubeId, "image")
 	bjson, _ := json.Marshal(b)
 	redisValue := string(bjson)
 	redis.LPush("talk_comment_"+talkid, redisValue)
-	talkCommentNumRedis(talkid, index, mode, commentCount)
-}
 
-func talkCommentNumRedis(talkid, index, mode, commentCount string) {
-	i, _ := strconv.Atoi(index)
-	key := "talk_" + mode
-	comment := redis.LIndex(key, int64(i))
-	if comment != "" {
-		var m map[string]interface{}
-		json.Unmarshal([]byte(comment), &m)
-		if m["id"] == talkid {
-			m["comment"] = commentCount
-			bjson, _ := json.Marshal(m)
-			redisValue := string(bjson)
-			redis.LSet(key, int64(i), redisValue)
-		}
-	}
 }
 
 func talkCommentRedisLockStatus(key string) string {
@@ -61,4 +46,11 @@ func talkCommentRedisLock(key, status string) {
 
 func talkDetailRedisSet(talkId string) {
 	redis.HSet("talk_detail", talkId, "1")
+}
+
+func talkCommentDeleteRedisUpdate(talkId, index string) {
+	var key = "talk_comment_" + talkId
+	location, _ := strconv.Atoi(index)
+	d := redis.LIndex(key, int64(location))
+	redis.LRem(key, d)
 }

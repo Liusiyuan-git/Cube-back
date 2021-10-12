@@ -25,9 +25,14 @@ func talkSendRedis(id int64, talk Talk) {
 	b["love"] = talk.Love
 	b["date"] = talk.Date
 	b["images"] = talk.Images
+	b["user_image"] = redis.HGet("user_profile_"+talk.CubeId, "image")
 	bjson, _ := json.Marshal(b)
 	redisValue := string(bjson)
 	redis.LPush("talk_new", redisValue)
+	redis.LPush("profile_talk_"+talk.CubeId, redisValue)
+	redis.HIncrBy("user_profile_"+talk.CubeId, "talk", 1)
+	redis.HIncrBy("talk_like_and_comment", strconv.FormatInt(id, 10)+"_like", 0)
+	redis.HIncrBy("talk_like_and_comment", strconv.FormatInt(id, 10)+"_comment", 0)
 }
 
 func TalkRedisLockStatus(key string) string {
@@ -38,6 +43,22 @@ func TalkRedisLockStatus(key string) string {
 func TalkLikeRedis(talkid, like, index, mode string) {
 	i, _ := strconv.Atoi(index)
 	key := "talk_" + mode
+	comment := redis.LIndex(key, int64(i))
+	if comment != "" {
+		var m map[string]interface{}
+		json.Unmarshal([]byte(comment), &m)
+		if m["id"] == talkid {
+			m["love"] = like
+			bjson, _ := json.Marshal(m)
+			redisValue := string(bjson)
+			redis.LSet(key, int64(i), redisValue)
+		}
+	}
+}
+
+func TalkLikeRedisProfile(talkid, cubeId, like, index string) {
+	i, _ := strconv.Atoi(index)
+	key := "profile_talk_" + cubeId
 	comment := redis.LIndex(key, int64(i))
 	if comment != "" {
 		var m map[string]interface{}

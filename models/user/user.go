@@ -10,12 +10,21 @@ import (
 )
 
 type User struct {
-	Id       int
-	CubeId   string `orm:"index;pk"`
-	Name     string
-	Email    string
-	Password string
-	Phone    string
+	Id             int
+	CubeId         string `orm:"index;pk"`
+	Name           string
+	Email          string
+	Password       string
+	Phone          string
+	Image          string
+	Introduce      string
+	Blog           int
+	Talk           int
+	Collect        int
+	Cared          int
+	Care           int
+	LeavingMessage int
+	Message        int
 }
 
 func random() string {
