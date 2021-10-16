@@ -1,7 +1,8 @@
 package collect
 
 import (
-	"Cube-back/database"
+	"Cube-back/redis"
+	"encoding/json"
 )
 
 type Collect struct {
@@ -10,12 +11,12 @@ type Collect struct {
 	BlogId int    `orm:"index"`
 }
 
-func (o *Collect) BlogCollect(cudeid, blogid, collect string) (string, bool) {
-	err := o.BlogCollectDb(cudeid, blogid, collect)
+func (o *Collect) BlogCollect(cubeid, blogid, cover, date, title, labelType string) (string, bool) {
+	err := o.BlogCollectDb(cubeid, blogid)
 	if err != nil {
 		return "收藏错误", false
 	}
-	BlogCollectRedis(cudeid, blogid, collect)
+	BlogCollectRedis(cubeid, blogid, cover, date, title, labelType)
 	return "", true
 }
 
@@ -28,12 +29,21 @@ func (o *Collect) BlogCollectConfirm(id, cubeid string) bool {
 	return ok
 }
 
-func (o *Collect) BlogCollectionGet(cubeid string) (interface{}, bool) {
-	cmd := `SELECT a.blog_id, b.title FROM collect a INNER JOIN blog b ON a.blog_id = b.id  AND a.cube_id = ? ORDER BY a.id DESC`
-	_, maps, pass := database.DBValues(cmd, cubeid)
-	if !pass {
-		return "", false
-	} else {
-		return maps, true
+func (o *Collect) CollectProfileGet(blogId string) (interface{}, bool) {
+	return redis.HMGet("blog_profile_"+blogId, []string{"love", "collect"}), true
+}
+
+func (o *Collect) BlogCollectionGet(cubeid string) (interface{}, int64, bool) {
+	var dataBlock []map[string]interface{}
+	collectData, length := collectRedisGet(cubeid)
+	if len(collectData) == 0 {
+		blogDb, length, pass := collectDbGet(cubeid)
+		return blogDb, length, pass
 	}
+	for _, item := range collectData {
+		var m map[string]interface{}
+		json.Unmarshal([]byte(item), &m)
+		dataBlock = append(dataBlock, m)
+	}
+	return collectData, int64(length), true
 }

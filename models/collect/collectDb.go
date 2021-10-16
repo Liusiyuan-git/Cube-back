@@ -2,21 +2,20 @@ package collect
 
 import (
 	"Cube-back/database"
-	"Cube-back/models/blog"
+	"Cube-back/redis"
+	"encoding/json"
 	"strconv"
 )
 
-func (o *Collect) BlogCollectDb(cudeid, blogid, collect string) error {
-	b := new(blog.Blog)
+func (o *Collect) BlogCollectDb(cubeid, blogid string) error {
 	id, _ := strconv.Atoi(blogid)
-	c, _ := strconv.Atoi(collect)
 	o.Id = 0
-	o.CubeId = cudeid
+	o.CubeId = cubeid
 	o.BlogId = id
-	b.Id = id
-	b.Collect = c
 	_, err := database.Insert(o)
-	database.Update(b, "collect")
+	if err != nil {
+		return err
+	}
 	return err
 }
 
@@ -26,9 +25,28 @@ func BlogCollectConfirmDbGet(id, cubeid string) bool {
 	if !pass {
 		return false
 	} else if len(maps) == 1 {
-		blogCollectIdSet(cubeid, id)
+		redis.HSet("blog_profile_"+id, cubeid, "1")
 		return true
 	} else {
 		return false
 	}
+}
+
+func collectDbGet(cubeid string) (interface{}, int64, bool) {
+	key := "user_collect_" + cubeid
+	cmd := `SELECT b.id, b.cube_id, b.title, b.cover, b.date, b.title, b.label_type FROM collect a INNER JOIN blog b ON a.blog_id = b.id  AND a.cube_id = ? ORDER BY a.id DESC`
+	num, maps, pass := database.DBValues(cmd, cubeid)
+	if num != 0 && !pass {
+		for _, item := range maps {
+			bjson, _ := json.Marshal(item)
+			redisValue := string(bjson)
+			redis.RPush(key, redisValue)
+		}
+		if len(maps) >= 10 {
+			return maps[0:9], num, true
+		} else {
+			return maps[0:], num, true
+		}
+	}
+	return maps, num, pass
 }
