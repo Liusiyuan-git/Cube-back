@@ -3,9 +3,9 @@ package profile
 import (
 	"Cube-back/database"
 	"Cube-back/log"
-	"Cube-back/models/care"
 	"Cube-back/models/common/crypt"
 	"Cube-back/models/user"
+	"Cube-back/rabbitmq"
 	"Cube-back/redis"
 	"Cube-back/ssh"
 	"encoding/base64"
@@ -144,16 +144,14 @@ func (p *Profile) UserImageUpdate(cubeId string) (interface{}, bool) {
 }
 
 func (p *Profile) UserCareSet(id, cubeId string) (string, bool) {
-	c := new(care.Care)
-	c.Care = id
-	c.Cared = cubeId
-	_, err := database.Insert(c)
-	if err != nil {
-		log.Error(err)
-		return "未知错误", true
+	err1 := userCareDbSet(id, cubeId)
+	m, err2 := userCareMessageDbSet(id, cubeId)
+	if err1 != nil || err2 != nil {
+		return "未知错误", false
 	}
 	userCareRedisSet(id, cubeId)
-	userCareDbSet(id, cubeId)
+	userMessageRedisSet(m)
+	go rabbitmq.MessageQueue.MessageSend(id, fmt.Sprintf("%v", redis.HIncrBy("user_message_profile_"+id, "total", 1)))
 	return "", true
 }
 
@@ -196,7 +194,6 @@ func (p *Profile) UserCareCancel(id, cubeId string) bool {
 		return false
 	} else {
 		userCareRedisCancelSet(id, cubeId)
-		userCareDbSet(id, cubeId)
 		return true
 	}
 }

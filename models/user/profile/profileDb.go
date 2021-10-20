@@ -3,11 +3,13 @@ package profile
 import (
 	"Cube-back/database"
 	"Cube-back/log"
+	"Cube-back/models/care"
+	"Cube-back/models/message"
 	"Cube-back/models/user"
 	"Cube-back/redis"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"time"
 )
 
 func profileBlogDbGet(cubeId string) (interface{}, int64, bool) {
@@ -137,33 +139,6 @@ func userCareDbGet(id string) (interface{}, bool) {
 	return careBox, pass
 }
 
-func userCareDbSet(id, cubeId string) {
-	careUpdate(id)
-	caredUpdate(cubeId)
-}
-
-func careUpdate(id string) {
-	care := redis.HGet("user_profile_"+id, "care")
-	u := new(user.User)
-	u.CubeId = id
-	u.Care, _ = strconv.Atoi(care)
-	_, err := database.Update(u, "care")
-	if err != nil {
-		log.Error(err)
-	}
-}
-
-func caredUpdate(cubeId string) {
-	cared := redis.HGet("user_profile_"+cubeId, "cared")
-	u := new(user.User)
-	u.CubeId = cubeId
-	u.Care, _ = strconv.Atoi(cared)
-	_, err := database.Update(u, "care")
-	if err != nil {
-		log.Error(err)
-	}
-}
-
 func profileCareDbGet(cubeId string) (interface{}, bool) {
 	var careDataBox []map[string]interface{}
 	var cmd = `select a.cared, b.name, b.image, b.introduce FROM care a inner join user b on a.cared = b.cube_id and a.care = ? order by a.id desc`
@@ -196,4 +171,29 @@ func profileCaredDbGet(cubeId string) (interface{}, bool) {
 		}
 	}
 	return careDataBox, pass
+}
+
+func userCareDbSet(id, cubeId string) error {
+	c := new(care.Care)
+	c.Care = id
+	c.Cared = cubeId
+	_, err := database.Insert(c)
+	if err != nil {
+		log.Error(err)
+	}
+	return err
+}
+
+func userCareMessageDbSet(id, cubeId string) (*message.Message, error) {
+	m := new(message.Message)
+	m.CubeId = id
+	m.SendId = cubeId
+	m.Text = "感谢关注！！！ 😄"
+	m.Care = 1
+	m.Date = time.Now().Format("2006-01-02 15:04:05")
+	_, err := database.Insert(m)
+	if err != nil {
+		log.Error(err)
+	}
+	return m, err
 }
