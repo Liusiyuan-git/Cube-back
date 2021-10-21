@@ -37,8 +37,8 @@ func (u *Login) LoginPhone(phone, code string) (string, string, string, string, 
 }
 
 func (u *Login) CountConfirm(count string) (string, string, string, string, bool) {
-	cmd := "select * from user where email = ? or name = ?"
-	num, maps, pass := database.DBValues(cmd, count, count)
+	cmd := "select * from user where email = ?"
+	num, maps, pass := database.DBValues(cmd, count)
 	if !pass {
 		return "", "未知错误", "", "", false
 	} else {
@@ -49,11 +49,18 @@ func (u *Login) CountConfirm(count string) (string, string, string, string, bool
 			image := fmt.Sprintf("%v", maps[0]["image"])
 			sessionRedis(cubeId, userName)
 			userImageRedis(cubeId, image)
+			userMessageRedis(cubeId)
 			return cubeId, password, userName, image, true
 		} else {
 			return "", "账号不存在", "", "", false
 		}
 	}
+}
+
+func userMessageRedis(cubeId string) {
+	redis.HIncrBy("user_message_profile_"+cubeId, "total", 1)
+	redis.HIncrBy("user_message_profile_"+cubeId, "blog", 0)
+	redis.HIncrBy("user_message_profile_"+cubeId, "talk", 0)
 }
 
 func sessionRedis(cubeid, name string) {

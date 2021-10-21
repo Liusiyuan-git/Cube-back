@@ -5,6 +5,7 @@ import (
 	_ "Cube-back/gron"
 	_ "Cube-back/log"
 	_ "Cube-back/models"
+	_ "Cube-back/rabbitmq"
 	_ "Cube-back/redis"
 	_ "Cube-back/routers"
 	_ "Cube-back/ssh"

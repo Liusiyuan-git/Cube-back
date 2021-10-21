@@ -14,5 +14,15 @@ func userMessageRedisGet(cubeId, page string) ([]string, int64) {
 }
 
 func MessageProfileRedisGet(cubeId string) interface{} {
-	return redis.HMGet("user_message_profile_"+cubeId, []string{"total"})
+	return redis.HMGet("user_message_profile_"+cubeId, []string{"total", "blog", "talk"})
+}
+
+func UserMessageCleanRedis(id string) {
+	var result string
+	box := redis.HMGet("user_message_profile_"+id, []string{"blog", "talk"})
+	blog, _ := strconv.Atoi(box[1].(string))
+	talk, _ := strconv.Atoi(box[1].(string))
+	value := blog + talk
+	result = strconv.Itoa(value)
+	redis.HSet("user_message_profile_"+id, "total", result)
 }

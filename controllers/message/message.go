@@ -30,3 +30,11 @@ func (c *Controller) MessageProfileGet() {
 	result["profile"] = profile
 	c.DataCallBack(result, true)
 }
+
+func (c *Controller) UserMessageClean() {
+	data := c.RequestBodyData()
+	cubeId := data["id"]
+	m.UserMessageClean(cubeId)
+	result := make(map[string]interface{})
+	c.DataCallBack(result, true)
+}
