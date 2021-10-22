@@ -3,6 +3,7 @@ package talkcomment
 import (
 	"Cube-back/database"
 	"Cube-back/models/talk"
+	"Cube-back/redis"
 	"strconv"
 	"time"
 )
@@ -15,7 +16,7 @@ type TalkComment struct {
 	Date    string `orm:"index;type(datetime)"`
 }
 
-func (b *TalkComment) TalkCommentSend(talkid, cubeid, index, comment, commentCount, mode string) (string, bool) {
+func (b *TalkComment) TalkCommentSend(talkid, cubeid, comment string) (string, bool) {
 	id, _ := strconv.Atoi(talkid)
 	b.Id = 0
 	b.TalkId = id
@@ -27,13 +28,14 @@ func (b *TalkComment) TalkCommentSend(talkid, cubeid, index, comment, commentCou
 		return "评论出错", false
 	}
 	t := new(talk.Talk)
+	redis.HIncrBy("talk_like_and_comment", talkid+"_comment", 1)
 	t.Id, _ = strconv.Atoi(talkid)
-	t.Comment, _ = strconv.Atoi(commentCount)
+	t.Comment, _ = strconv.Atoi(redis.HGet("talk_like_and_comment", talkid+"_comment"))
 	_, err = database.Update(t, "comment")
 	if err != nil {
 		return "未知錯誤", false
 	}
-	TalkCommentRedisSend(talkCommentId, talkid, index, mode, commentCount, *b)
+	TalkCommentRedisSend(talkCommentId, talkid, *b)
 	return "", true
 }
 
@@ -56,12 +58,13 @@ func (b *TalkComment) TalkCommonGet(talkId, page string) (interface{}, int64, bo
 	return "", 0, false
 }
 
-func (b *TalkComment) TalkCommentDelete(talkcommentid, cubeid, talkid, commentCount string) (string, bool) {
+func (b *TalkComment) TalkCommentDelete(talkcommentid, cubeid, talkid, commentCount, index string) (string, bool) {
 	cmd := "DELETE FROM talk_comment where id=? and cube_id=?"
 	_, _, pass := database.DBValues(cmd, talkcommentid, cubeid)
 	if !pass {
 		return "删除失败", false
 	}
+	talkCommentDeleteRedisUpdate(talkid, index)
 	t := new(talk.Talk)
 	t.Id, _ = strconv.Atoi(talkid)
 	t.Comment, _ = strconv.Atoi(commentCount)

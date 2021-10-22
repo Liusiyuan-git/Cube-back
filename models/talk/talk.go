@@ -3,6 +3,7 @@ package talk
 import (
 	"Cube-back/database"
 	"Cube-back/log"
+	"Cube-back/redis"
 	"Cube-back/ssh"
 	"encoding/base64"
 	"encoding/json"
@@ -23,19 +24,24 @@ type Talk struct {
 	Comment int
 }
 
-func (b *Talk) TalkGet(mode, page string) (interface{}, int64, bool) {
+func (b *Talk) TalkGet(mode, page string) (interface{}, interface{}, int64, string, bool) {
 	var dataBlock []map[string]interface{}
+	var countBox []string
+	var countBlock []interface{}
 	talkData, length := talkRedisGet(mode, page)
 	if len(talkData) == 0 {
 		talkDb, length, pass := talkDbGet(mode)
-		return talkDb, length, pass
+		return talkDb, countBlock, length, "db", pass
 	}
 	for _, item := range talkData {
 		var m map[string]interface{}
 		json.Unmarshal([]byte(item), &m)
+		id := fmt.Sprintf("%v", m["id"])
+		countBox = append(countBox, id+"_like", id+"_comment")
 		dataBlock = append(dataBlock, m)
 	}
-	return dataBlock, length, true
+	countBlock = redis.HMGet("talk_like_and_comment", countBox)
+	return dataBlock, countBlock, length, "redis", true
 }
 
 func (b *Talk) TalkSend(cubeid, text, images string) (string, bool) {
@@ -55,9 +61,14 @@ func (b *Talk) TalkSend(cubeid, text, images string) (string, bool) {
 		return "发送出错", false
 	}
 	talkSendRedis(talkid, *b)
+	go talkMessageSend(b)
 	return "", true
 }
 
+func talkMessageSend(b *Talk) {
+	talkMessageSendDb(b)
+	talkMessageSendRedis(b)
+}
 func talkSendImages(cubeid, images string) (string, string, bool) {
 	var m []string
 	var imagelist []string
@@ -98,13 +109,14 @@ func base64Decode(code string) (string, []uint8, bool) {
 	}
 }
 
-func (b *Talk) TalkLike(talkid, like, index, mode string) (string, bool) {
+func (b *Talk) TalkLike(talkid string) (string, bool) {
+	redis.HIncrBy("talk_like_and_comment", talkid+"_like", 1)
 	b.Id, _ = strconv.Atoi(talkid)
-	b.Love, _ = strconv.Atoi(like)
+	b.Love, _ = strconv.Atoi(redis.HGet("talk_like_and_comment", talkid+"_like"))
 	_, err := database.Update(b, "love")
 	if err != nil {
 		return "未知錯誤", false
 	}
-	TalkLikeRedis(talkid, like, index, mode)
+
 	return "", true
 }

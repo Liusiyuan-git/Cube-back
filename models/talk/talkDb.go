@@ -2,6 +2,8 @@ package talk
 
 import (
 	"Cube-back/database"
+	"Cube-back/log"
+	"Cube-back/models/message"
 	"Cube-back/redis"
 	"encoding/json"
 )
@@ -42,4 +44,20 @@ func talkDbCmdModeSet(cmd, mode string) string {
 		cmd += " order by a.love desc"
 	}
 	return cmd
+}
+
+func talkMessageSendDb(b *Talk) {
+	m := new(message.Message)
+	caredBox := userCareRedisGet(b.CubeId)
+	for _, item := range caredBox {
+		m.CubeId = item
+		m.SendId = b.CubeId
+		m.Text = b.Text[30:]
+		m.Talk = 1
+		m.Date = b.Date
+		_, err := database.Insert(m)
+		if err != nil {
+			log.Error(err)
+		}
+	}
 }

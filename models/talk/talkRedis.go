@@ -1,8 +1,10 @@
 package talk
 
 import (
+	"Cube-back/rabbitmq"
 	"Cube-back/redis"
 	"encoding/json"
+	"fmt"
 	"strconv"
 )
 
@@ -74,4 +76,36 @@ func TalkLikeRedisProfile(talkid, cubeId, like, index string) {
 
 func TalkRedisLock(key, status string) {
 	redis.Set(key, status)
+}
+
+func userCareRedisGet(cubeId string) []string {
+	return redis.HKeys("user_cared_" + cubeId)
+}
+
+func talkMessageSendRedis(t *Talk) {
+	var userTalkText string
+	b := make(map[string]interface{})
+	caredBox := userCareRedisGet(t.CubeId)
+	for _, item := range caredBox {
+		userName := redis.HGet("session", item)
+		userImage := redis.HGet("user_profile_"+item, "image")
+		if len(t.Text) > 30 {
+			userTalkText = t.Text[30:]
+		} else {
+			userTalkText = t.Text
+		}
+		b["cube_id"] = item
+		b["send_id"] = t.CubeId
+		b["date"] = t.Date
+		b["text"] = userTalkText
+		b["talk"] = 1
+		b["name"] = userName
+		b["image"] = userImage
+		bjson, _ := json.Marshal(b)
+		redisValue := string(bjson)
+		redis.LPush("user_message_"+item, redisValue)
+		redis.HIncrBy("user_message_profile_"+item, "talk", 1)
+		redis.HIncrBy("user_message_profile_"+item, "talk_"+t.CubeId, 1)
+		rabbitmq.MessageQueue.MessageSend(item, fmt.Sprintf("%v", redis.HIncrBy("user_message_profile_"+item, "total", 1)))
+	}
 }
