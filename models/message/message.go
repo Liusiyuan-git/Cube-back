@@ -1,6 +1,9 @@
 package message
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 type Message struct {
 	Id          int
@@ -33,4 +36,21 @@ func (m *Message) UserMessageGet(cubeId, page string) (interface{}, int64, bool)
 
 func (m *Message) MessageProfileGet(cubeId string) interface{} {
 	return MessageProfileRedisGet(cubeId)
+}
+
+func (m *Message) UserMessageClean(cubeId string) {
+	UserMessageCleanRedis(cubeId)
+}
+
+func (m *Message) MessageProfileUserTalkGet(cubeId, idBox string) (interface{}, bool) {
+	var talkIdBox []string
+	ids := strings.Split(idBox, ";")
+	for _, item := range ids {
+		talkIdBox = append(talkIdBox, "talk_"+item)
+	}
+	return messageProfileUserTalkRedisGet(cubeId, talkIdBox), true
+}
+
+func (m *Message) MessageProfileUserTalkClean(id, deleteId string) {
+	messageProfileUserTalkRedisClean(id, deleteId)
 }

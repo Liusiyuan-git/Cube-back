@@ -38,3 +38,22 @@ func (c *Controller) UserMessageClean() {
 	result := make(map[string]interface{})
 	c.DataCallBack(result, true)
 }
+
+func (c *Controller) MessageProfileUserTalkGet() {
+	data := c.RequestBodyData()
+	id := data["id"]
+	idBox := data["idBox"]
+	content, pass := m.MessageProfileUserTalkGet(id, idBox)
+	result := make(map[string]interface{})
+	result["content"] = content
+	c.DataCallBack(result, pass)
+}
+
+func (c *Controller) MessageProfileUserTalkClean() {
+	data := c.RequestBodyData()
+	id := data["id"]
+	deleteId := data["deleteId"]
+	m.MessageProfileUserTalkClean(id, deleteId)
+	result := make(map[string]interface{})
+	c.DataCallBack(result, true)
+}

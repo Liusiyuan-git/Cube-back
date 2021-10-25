@@ -20,9 +20,26 @@ func MessageProfileRedisGet(cubeId string) interface{} {
 func UserMessageCleanRedis(id string) {
 	var result string
 	box := redis.HMGet("user_message_profile_"+id, []string{"blog", "talk"})
-	blog, _ := strconv.Atoi(box[1].(string))
+	blog, _ := strconv.Atoi(box[0].(string))
 	talk, _ := strconv.Atoi(box[1].(string))
 	value := blog + talk
 	result = strconv.Itoa(value)
 	redis.HSet("user_message_profile_"+id, "total", result)
+}
+
+func messageProfileUserTalkRedisGet(cubeId string, ids []string) interface{} {
+	return redis.HMGet("user_message_profile_"+cubeId, ids)
+}
+
+func messageProfileUserTalkRedisClean(id, deleteId string) {
+	key := "user_message_profile_" + id
+	target := "talk_" + deleteId
+	userTalk := redis.HGet(key, target)
+	if userTalk != "nil" {
+		t, _ := strconv.Atoi(userTalk)
+		r := int64(-1 * t)
+		redis.HIncrBy(key, "talk", r)
+		redis.HIncrBy(key, "total", r)
+		redis.HDel(key, target)
+	}
 }

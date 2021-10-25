@@ -58,7 +58,7 @@ func (u *Login) CountConfirm(count string) (string, string, string, string, bool
 }
 
 func userMessageRedis(cubeId string) {
-	redis.HIncrBy("user_message_profile_"+cubeId, "total", 1)
+	redis.HIncrBy("user_message_profile_"+cubeId, "total", 0)
 	redis.HIncrBy("user_message_profile_"+cubeId, "blog", 0)
 	redis.HIncrBy("user_message_profile_"+cubeId, "talk", 0)
 }
