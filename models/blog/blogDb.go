@@ -2,8 +2,12 @@ package blog
 
 import (
 	"Cube-back/database"
+	"Cube-back/log"
+	"Cube-back/models/message"
+	"Cube-back/rabbitmq"
 	"Cube-back/redis"
 	"encoding/json"
+	"fmt"
 )
 
 func blogDbGet(mode, label, labeltype string) (interface{}, int64, bool) {
@@ -82,5 +86,42 @@ func blogDetailDbGet(id string, b *Blog) (interface{}, bool) {
 		} else {
 			return "", false
 		}
+	}
+}
+
+func blogMessageSendDb(b *Blog) {
+	m := new(message.Message)
+	caredBox := userCareRedisGet(b.CubeId)
+	for _, item := range caredBox {
+		m.CubeId = item
+		m.SendId = b.CubeId
+		m.Text = "《" + b.Title + "》"
+		m.Blog = 1
+		m.Date = b.Date
+		_, err := database.Insert(m)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+}
+
+func blogMessageSendRedis(t *Blog) {
+	b := make(map[string]interface{})
+	caredBox := userCareRedisGet(t.CubeId)
+	for _, item := range caredBox {
+		userName := redis.HGet("session", t.CubeId)
+		userImage := redis.HGet("user_profile_"+t.CubeId, "image")
+		b["send_id"] = t.CubeId
+		b["date"] = t.Date
+		b["text"] = "《" + t.Title + "》"
+		b["blog"] = 1
+		b["name"] = userName
+		b["image"] = userImage
+		bjson, _ := json.Marshal(b)
+		redisValue := string(bjson)
+		redis.LPush("user_message_"+item, redisValue)
+		redis.HIncrBy("user_message_profile_"+item, "blog", 1)
+		redis.HIncrBy("user_message_profile_"+item, "blog_"+t.CubeId, 1)
+		rabbitmq.MessageQueue.MessageSend(item, fmt.Sprintf("%v", redis.HIncrBy("user_message_profile_"+item, "total", 1)))
 	}
 }

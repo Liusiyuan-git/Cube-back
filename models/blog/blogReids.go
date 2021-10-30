@@ -26,10 +26,10 @@ func blogSendRedis(id int64, blog Blog) {
 	b["label_type"] = blog.LabelType
 	bjson, _ := json.Marshal(b)
 	redisValue := string(bjson)
-	blogRedisLeftPush(blog.Label, blog.LabelType, redisValue)
+	blogRedisLeftPush(blog.Label, blog.LabelType, redisValue, blog.CubeId)
 }
 
-func blogRedisLeftPush(label, labelType, redisString string) {
+func blogRedisLeftPush(label, labelType, redisString, cubeId string) {
 	if label != "" {
 		if labelType == "all" {
 			redis.LPush("blog_"+label+"_all_new", redisString)
@@ -39,6 +39,7 @@ func blogRedisLeftPush(label, labelType, redisString string) {
 		}
 	}
 	redis.LPush("blog_new", redisString)
+	redis.LPush("profile_blog_"+cubeId, redisString)
 }
 
 func blodRedisGet(mode, page, label, labeltype string) ([]string, int64) {
@@ -76,4 +77,8 @@ func blogRedisLock(key, status string) {
 func blogRedisLockStatus(key string) string {
 	status := redis.Get(key)
 	return status
+}
+
+func userCareRedisGet(cubeId string) []string {
+	return redis.HKeys("user_cared_" + cubeId)
 }

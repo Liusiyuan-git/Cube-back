@@ -68,7 +68,13 @@ func (b *Blog) BlogSend(cubeid, cover, title, content, text, images, label, labe
 	blogSendRedis(blogid, *b)
 	r := new(draft.Draft)
 	r.DraftRemove(cubeid)
+	go blogMessageSend(b)
 	return "", true
+}
+
+func blogMessageSend(b *Blog) {
+	blogMessageSendDb(b)
+	blogMessageSendRedis(b)
 }
 
 func blogTime() string {
