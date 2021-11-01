@@ -151,8 +151,14 @@ func (p *Profile) UserCareSet(id, cubeId string) (string, bool) {
 	}
 	userCareRedisSet(id, cubeId)
 	userMessageRedisSet(m)
-	go rabbitmq.MessageQueue.MessageSend(id, fmt.Sprintf("%v", redis.HIncrBy("user_message_profile_"+id, "total", 1)))
+	go userMessageSend(id, cubeId)
 	return "", true
+}
+
+func userMessageSend(id, careId string) {
+	redis.HIncrBy("user_message_profile_"+id, "blog_"+careId, 0)
+	redis.HIncrBy("user_message_profile_"+id, "talk_"+careId, 0)
+	rabbitmq.MessageQueue.MessageSend(id, fmt.Sprintf("%v", redis.HIncrBy("user_message_profile_"+id, "total", 1)))
 }
 
 func (p *Profile) UserCareGet(id, cubeId string) (interface{}, bool) {

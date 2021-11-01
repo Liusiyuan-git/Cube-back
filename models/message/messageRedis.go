@@ -31,6 +31,10 @@ func messageProfileUserTalkRedisGet(cubeId string, ids []string) interface{} {
 	return redis.HMGet("user_message_profile_"+cubeId, ids)
 }
 
+func messageProfileUserBlogRedisGet(cubeId string, ids []string) interface{} {
+	return redis.HMGet("user_message_profile_"+cubeId, ids)
+}
+
 func messageProfileUserTalkRedisClean(id, deleteId string) {
 	key := "user_message_profile_" + id
 	target := "talk_" + deleteId
@@ -39,6 +43,19 @@ func messageProfileUserTalkRedisClean(id, deleteId string) {
 		t, _ := strconv.Atoi(userTalk)
 		r := int64(-1 * t)
 		redis.HIncrBy(key, "talk", r)
+		redis.HIncrBy(key, "total", r)
+		redis.HDel(key, target)
+	}
+}
+
+func messageProfileUserBlogRedisClean(id, deleteId string) {
+	key := "user_message_profile_" + id
+	target := "blog_" + deleteId
+	userTalk := redis.HGet(key, target)
+	if userTalk != "nil" {
+		t, _ := strconv.Atoi(userTalk)
+		r := int64(-1 * t)
+		redis.HIncrBy(key, "blog", r)
 		redis.HIncrBy(key, "total", r)
 		redis.HDel(key, target)
 	}

@@ -54,3 +54,16 @@ func (m *Message) MessageProfileUserTalkGet(cubeId, idBox string) (interface{}, 
 func (m *Message) MessageProfileUserTalkClean(id, deleteId string) {
 	messageProfileUserTalkRedisClean(id, deleteId)
 }
+
+func (m *Message) MessageProfileUserBlogClean(id, deleteId string) {
+	messageProfileUserBlogRedisClean(id, deleteId)
+}
+
+func (m *Message) MessageProfileUserBlogGet(cubeId, idBox string) (interface{}, bool) {
+	var blogIdBox []string
+	ids := strings.Split(idBox, ";")
+	for _, item := range ids {
+		blogIdBox = append(blogIdBox, "blog_"+item)
+	}
+	return messageProfileUserBlogRedisGet(cubeId, blogIdBox), true
+}
