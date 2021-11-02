@@ -2,27 +2,35 @@ package rabbitmq
 
 import (
 	"Cube-back/log"
-	"os"
-
+	"Cube-back/models/common/configure"
 	"github.com/streadway/amqp"
 )
 
-func failOnError(err error) {
-	if err != nil {
-		log.Error(err)
-	}
+var MessageQueue *Mq
+
+type Mq struct {
+	RabbitmqIp       string
+	RabbitmqPort     string
+	RabbitmqPassword string
+	RabbitmqUser     string
+	conn             *amqp.Connection
 }
 
-func init() {
-	conn, err := amqp.Dial("amqp://guest:guest@1.15.111.85:15672/admin")
-	log.Error(err)
-	defer conn.Close()
+func (m *Mq) MessageSend(queueName, message string) {
+	m.channelCreate(queueName, message)
+}
 
-	ch, err := conn.Channel()
-	failOnError(err)
-	defer ch.Close()
+func (m *Mq) channelCreate(queueName, message string) {
+	ch, err := m.conn.Channel()
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	exchangeDeclare(ch, queueName, message)
+}
 
-	err = ch.ExchangeDeclare(
+func exchangeDeclare(ch *amqp.Channel, queueName, message string) {
+	err := ch.ExchangeDeclare(
 		"cube",   // name
 		"direct", // type
 		true,     // durable
@@ -31,51 +39,75 @@ func init() {
 		false,    // no-wait
 		nil,      // arguments
 	)
-	failOnError(err)
-
-	q, err := ch.QueueDeclare(
-		"blog", // name
-		false,  // durable
-		false,  // delete when unused
-		true,   // exclusive
-		false,  // no-wait
-		nil,    // arguments
-	)
-	failOnError(err)
-
-	if len(os.Args) < 2 {
-		log.Info(os.Args[0])
-		os.Exit(0)
-	}
-	for _, s := range os.Args[1:] {
-		err = ch.QueueBind(
-			q.Name, // queue name
-			s,      // routing key
-			"cube", // exchange
-			false,
-			nil)
+	if err != nil {
 		log.Error(err)
+		return
+	}
+	queueDeclare(ch, queueName, message)
+}
+
+func queueDeclare(ch *amqp.Channel, queueName, message string) {
+	_, err := ch.QueueDeclare(
+		queueName, // name
+		true,      // durable
+		false,     // delete when unused
+		false,     // exclusive
+		false,     // no-wait
+		nil,       // arguments
+	)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	queueBuild(ch, queueName, message)
+}
+
+func queueBuild(ch *amqp.Channel, queueName, message string) {
+	err := ch.QueueBind(
+		queueName, // queue name
+		queueName, // routing key
+		"cube",    // exchange
+		false,
+		nil)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	messagePublish(ch, queueName, message)
+}
+
+func messagePublish(ch *amqp.Channel, queueName, message string) {
+	err := ch.Publish(
+		"cube",    // exchange
+		queueName, // routing key
+		false,     // mandatory
+		false,     // immediate
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(message),
+		})
+	if err != nil {
+		log.Error(err)
+		ch.Close()
+		return
+	}
+	ch.Close()
+
+}
+func (m *Mq) mqStart() {
+	mq := new(Mq)
+	configure.Get(&mq)
+	url := "amqp://" + mq.RabbitmqUser + ":" + mq.RabbitmqPassword + "@" + mq.RabbitmqIp + "/"
+	conn, err := amqp.Dial(url)
+	if err != nil {
+		log.Error(err)
+		return
 	}
 
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto ack
-		false,  // exclusive
-		false,  // no local
-		false,  // no wait
-		nil,    // args
-	)
-	log.Error(err)
+	m.conn = conn
+}
 
-	forever := make(chan bool)
-
-	go func() {
-		for d := range msgs {
-			log.Printf(" [x] %s", d.Body)
-		}
-	}()
-
-	log.Printf(" [*] Waiting for logs. To exit press CTRL+C")
-	<-forever
+func init() {
+	MessageQueue = new(Mq)
+	MessageQueue.mqStart()
 }

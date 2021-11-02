@@ -1,7 +1,9 @@
 package profile
 
 import (
+	"Cube-back/models/message"
 	"Cube-back/redis"
+	"encoding/json"
 	"strconv"
 )
 
@@ -76,4 +78,31 @@ func profileCareRedisGet(cubeId string) []map[string]interface{} {
 		}
 	}
 	return careDataBox
+}
+
+func profileCaredRedisGet(cubeId string) []map[string]interface{} {
+	var careDataBox []map[string]interface{}
+	careId := redis.HKeys("user_cared_" + cubeId)
+	for _, item := range careId {
+		if item != "" {
+			eachProfile := redis.HMGet("user_profile_"+item, []string{"name", "image", "introduce"})
+			careDataBox = append(careDataBox, map[string]interface{}{"cube_id": item, "name": eachProfile[0], "image": eachProfile[1], "introduce": eachProfile[2]})
+		}
+	}
+	return careDataBox
+}
+func userMessageRedisSet(message *message.Message) {
+	b := make(map[string]interface{})
+	userName := redis.HGet("session", message.SendId)
+	userImage := redis.HGet("user_profile_"+message.SendId, "image")
+	b["cube_id"] = message.CubeId
+	b["send_id"] = message.SendId
+	b["date"] = message.Date
+	b["text"] = message.Text
+	b["care"] = message.Care
+	b["name"] = userName
+	b["image"] = userImage
+	bjson, _ := json.Marshal(b)
+	redisValue := string(bjson)
+	redis.LPush("user_message_"+message.CubeId, redisValue)
 }

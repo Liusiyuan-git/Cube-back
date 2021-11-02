@@ -64,11 +64,12 @@ func HSet(key, field, value string) {
 	client.HSet(key, field, value).Val()
 }
 
-func HIncrBy(key, field string, num int64) {
-	_, err := client.HIncrBy(key, field, num).Result()
+func HIncrBy(key, field string, num int64) int64 {
+	num, err := client.HIncrBy(key, field, num).Result()
 	if err != nil {
 		log.Error(err)
 	}
+	return num
 }
 
 func HMGet(key string, fields []string) []interface{} {

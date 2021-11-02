@@ -20,7 +20,7 @@ func (r *Register) UserRegister(email, password, phone, code string) (string, bo
 	cubeId := getCubeId()
 	u := new(user.User)
 	password = crypt.Set(password)
-	u.Email, u.Password, u.Phone, u.CubeId = email, password, phone, cubeId
+	u.Email, u.Password, u.Phone, u.CubeId, u.Name = email, password, phone, cubeId, phone[0:3]+"****"+phone[7:]
 	_, err := database.Insert(u)
 	if err != nil {
 		return "注册失败，请稍后再试", false
