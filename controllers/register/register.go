@@ -29,10 +29,12 @@ func (c *Controller) UserRegister() {
 func (c *Controller) VerificationCode() {
 	data := c.RequestBodyData()
 	phone := data["phone"]
+	mode := data["mode"]
 	u := new(user.User)
-	u.VerificationCode(phone)
+	content := u.VerificationCode(mode, phone)
 	result := make(map[string]interface{})
 	result["phone"] = phone
+	result["content"] = content
 	c.DataCallBack(result, true)
 }
 

@@ -5,6 +5,7 @@ import (
 	"Cube-back/controllers/common"
 	"Cube-back/controllers/draft"
 	"Cube-back/controllers/login"
+	"Cube-back/controllers/message"
 	"Cube-back/controllers/profile"
 	"Cube-back/controllers/register"
 	"Cube-back/controllers/talk"
@@ -45,6 +46,19 @@ func apiRegister() {
 			beego.NSRouter("/user.name.send", &profile.Controller{}, "post:UserNameSend"),
 			beego.NSRouter("/user.profile.get", &profile.Controller{}, "post:UserProfileGet"),
 			beego.NSRouter("/user.image.update", &profile.Controller{}, "post:UserImageUpdate"),
+			beego.NSRouter("/user.care.set", &profile.Controller{}, "post:UserCareSet"),
+			beego.NSRouter("/user.care.get", &profile.Controller{}, "post:UserCareGet"),
+			beego.NSRouter("/user.care.confirm", &profile.Controller{}, "post:UserCareConfirm"),
+			beego.NSRouter("/user.care.cancel", &profile.Controller{}, "post:UserCareCancel"),
+			beego.NSRouter("/profile.leave.set", &profile.Controller{}, "post:ProfileLeaveSet"),
+			beego.NSRouter("/user.message.get", &message.Controller{}, "post:UserMessageGet"),
+			beego.NSRouter("/message.profile.get", &message.Controller{}, "post:MessageProfileGet"),
+			beego.NSRouter("/user.message.clean", &message.Controller{}, "post:UserMessageClean"),
+			beego.NSRouter("/user.profile.care", &common.Controller{}, "post:UserProfileCare"),
+			beego.NSRouter("/message.profile.user.talk.get", &message.Controller{}, "post:MessageProfileUserTalkGet"),
+			beego.NSRouter("/message.profile.user.talk.clean", &message.Controller{}, "post:MessageProfileUserTalkClean"),
+			beego.NSRouter("/message.profile.user.blog.get", &message.Controller{}, "post:MessageProfileUserBlogGet"),
+			beego.NSRouter("/message.profile.user.blog.clean", &message.Controller{}, "post:MessageProfileUserBlogClean"),
 		),
 		beego.NSNamespace("/common",
 			beego.NSRouter("/blog.get", &common.Controller{}, "post:BlogGet"),
@@ -59,8 +73,12 @@ func apiRegister() {
 			beego.NSRouter("/blog.comment.like", &common.Controller{}, "post:BlogCommonLike"),
 			beego.NSRouter("/profile.blog.get", &common.Controller{}, "post:ProfileBlogGet"),
 			beego.NSRouter("/profile.talk.get", &common.Controller{}, "post:ProfileTalkGet"),
+			beego.NSRouter("/profile.collect.get", &common.Controller{}, "post:ProfileCollectGet"),
 			beego.NSRouter("/user.profile.get", &common.Controller{}, "post:UserProfileGet"),
 			beego.NSRouter("/collect.profile.get", &common.Controller{}, "post:CollectProfileGet"),
+			beego.NSRouter("/user.profile.care", &common.Controller{}, "post:UserProfileCare"),
+			beego.NSRouter("/user.profile.cared", &common.Controller{}, "post:UserProfileCared"),
+			beego.NSRouter("/profile.leave.get", &common.Controller{}, "post:ProfileLeaveGet"),
 		),
 	)
 	beego.AddNamespace(ns)

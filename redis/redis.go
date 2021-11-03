@@ -44,6 +44,10 @@ func Get(key string) string {
 	return status
 }
 
+func SetVerificationCode(key, value string) {
+	_ = client.Set(key, value, 120000000000).Val()
+}
+
 func Set(key, value string) {
 	_ = client.Set(key, value, 0).Val()
 }
