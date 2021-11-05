@@ -69,6 +69,7 @@ func talkMessageSend(b *Talk) {
 	talkMessageSendDb(b)
 	talkMessageSendRedis(b)
 }
+
 func talkSendImages(cubeid, images string) (string, string, bool) {
 	var m []string
 	var imagelist []string

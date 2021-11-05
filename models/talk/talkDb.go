@@ -14,7 +14,7 @@ func talkDbGet(mode string) (interface{}, int64, bool) {
 		return "数据更新中，请稍后再试", 0, false
 	}
 	TalkRedisLock(key+"_get", "true")
-	var cmd = `select a.id, a.cube_id, a.text, a.date, a.love, a.images, a.comment, b.image as user_image, b.name FROM talk a inner join user b on a.cube_id = b.cube_id order by id desc`
+	var cmd = `select a.id, a.cube_id, a.text, a.date, a.love, a.images, a.comment, b.image as user_image, b.name FROM talk a inner join user b on a.cube_id = b.cube_id`
 	cmd = talkDbCmdModeSet(cmd, mode)
 	num, maps, pass := database.DBValues(cmd)
 	TalkRedisLock(key+"_get", "false")
@@ -47,12 +47,18 @@ func talkDbCmdModeSet(cmd, mode string) string {
 }
 
 func talkMessageSendDb(b *Talk) {
+	var userTalkText string
 	m := new(message.Message)
 	caredBox := userCareRedisGet(b.CubeId)
+	if len(b.Text) > 30 {
+		userTalkText = b.Text[30:]
+	} else {
+		userTalkText = b.Text
+	}
 	for _, item := range caredBox {
 		m.CubeId = item
 		m.SendId = b.CubeId
-		m.Text = b.Text[30:]
+		m.Text = userTalkText
 		m.Talk = 1
 		m.Date = b.Date
 		_, err := database.Insert(m)

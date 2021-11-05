@@ -87,14 +87,13 @@ func talkMessageSendRedis(t *Talk) {
 	b := make(map[string]interface{})
 	caredBox := userCareRedisGet(t.CubeId)
 	for _, item := range caredBox {
-		userName := redis.HGet("session", item)
-		userImage := redis.HGet("user_profile_"+item, "image")
+		userName := redis.HGet("session", t.CubeId)
+		userImage := redis.HGet("user_profile_"+t.CubeId, "image")
 		if len(t.Text) > 30 {
 			userTalkText = t.Text[30:]
 		} else {
 			userTalkText = t.Text
 		}
-		b["cube_id"] = item
 		b["send_id"] = t.CubeId
 		b["date"] = t.Date
 		b["text"] = userTalkText
