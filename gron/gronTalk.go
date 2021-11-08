@@ -2,10 +2,12 @@ package gron
 
 import (
 	"Cube-back/database"
+	"Cube-back/elasticsearch"
 	"Cube-back/redis"
 	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/client/orm"
+	"strconv"
 )
 
 func cubeTalkNewUpdate() {
@@ -13,6 +15,7 @@ func cubeTalkNewUpdate() {
 	num, maps, pass := database.DBValues(cmd)
 	if pass {
 		cubeTalkDataSet(num, maps, "new")
+		cubeTalkEsSet(int(num), maps)
 	}
 }
 
@@ -109,6 +112,44 @@ func cubeTalkDetailClean() {
 					redis.Del("talk_" + key + "_comment_get")
 					redis.Del("talk_comment_" + key)
 				}
+			}
+		}
+	}
+}
+
+func cubeTalkEsSet(num int, maps []orm.Params) {
+	EsLen, EsMaps := elasticsearch.Client.SearchAll("blog")
+	if num >= EsLen {
+		for index, item := range maps {
+			var box = map[string]interface{}{}
+			box["images"] = item["images"].(string)
+			box["name"] = item["name"].(string)
+			box["text"] = item["text"].(string)
+			box["user_image"] = item["user_image"].(string)
+			box["index"], _ = strconv.Atoi(item["id"].(string))
+			box["date"] = item["date"].(string)
+			box["cube_id"] = item["cube_id"].(string)
+			bjson, _ := json.Marshal(box)
+			redisValue := string(bjson)
+			elasticsearch.Client.Create("talk", redisValue, index)
+		}
+	} else {
+		for index, item := range EsMaps {
+			if (index + 1) <= num {
+				var box = map[string]interface{}{}
+				box["images"] = maps[index]["images"].(string)
+				box["user_image"] = maps[index]["user_image"].(string)
+				box["name"] = maps[index]["name"].(string)
+				box["text"] = maps[index]["text"].(string)
+				box["index"], _ = strconv.Atoi(maps[index]["index"].(string))
+				box["date"] = maps[index]["date"].(string)
+				box["cube_id"] = maps[index]["cube_id"].(string)
+				bjson, _ := json.Marshal(box)
+				redisValue := string(bjson)
+				elasticsearch.Client.Create("blog", redisValue, index)
+			} else {
+				DocumentId := item.(map[string]interface{})["_id"].(string)
+				elasticsearch.Client.Delete("blog", DocumentId)
 			}
 		}
 	}

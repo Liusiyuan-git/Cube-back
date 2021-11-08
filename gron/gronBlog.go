@@ -2,6 +2,7 @@ package gron
 
 import (
 	"Cube-back/database"
+	"Cube-back/elasticsearch"
 	"Cube-back/log"
 	"Cube-back/models/blog"
 	"Cube-back/redis"
@@ -10,22 +11,6 @@ import (
 	"github.com/beego/beego/v2/client/orm"
 	"strconv"
 )
-
-//var labelType = map[string][]string{
-//	"all":        []string{},
-//	"python":     []string{},
-//	"go":         []string{},
-//	"java":       []string{},
-//	"javaScript": []string{},
-//	"c++":        []string{},
-//	"c":          []string{},
-//	"redis":      []string{},
-//	"rabbitmq":   []string{},
-//	"docker":     []string{},
-//	"kubernetes": []string{},
-//	"mysql":      []string{},
-//	"live":       []string{},
-//}
 
 var label = map[string][]string{
 	"language":       []string{"python", "go", "java", "javaScript", "c++", "c"},
@@ -37,7 +22,7 @@ var label = map[string][]string{
 
 func cubeBlogNewUpdate() {
 	cmd := `select a.id, a.cube_id, a.cover, a.title, a.image, a.text, a.content, a.date, a.label, a.label_type, a.love, a.comment, a.collect,
-	a.view, b.name FROM blog a inner join user b on a.cube_id = b.cube_id order by a.id desc`
+	a.view, b.name, b.image as user_image FROM blog a inner join user b on a.cube_id = b.cube_id order by a.id desc`
 	num, maps, pass := database.DBValues(cmd)
 	if pass {
 		labelType := labelTypeBuild()
@@ -46,6 +31,7 @@ func cubeBlogNewUpdate() {
 		cubeBlogDataFilterSet("new", labelType)
 		cubeBlogProfileRedisSet(maps)
 		cubeBlogProfileDbSet(maps)
+		cubeBlogEsSet(int(num), maps)
 	}
 }
 
@@ -137,7 +123,7 @@ func cubeBlogProfileCommentDbSet(blogid string, num int64) {
 
 func cubeBlogHotUpdate() {
 	cmd := `select a.id, a.cube_id, a.cover, a.title, a.text, a.date, a.label, a.label_type, a.love, a.comment, a.collect,
-	a.view, b.name FROM blog a inner join user b on a.cube_id = b.cube_id order by a.love desc`
+	a.view, b.name, b.image as user_image FROM blog a inner join user b on a.cube_id = b.cube_id order by a.love desc`
 	num, maps, pass := database.DBValues(cmd)
 	if pass {
 		labelType := labelTypeBuild()
@@ -236,6 +222,48 @@ func cubeBlogProfileDbSet(maps []orm.Params) {
 		_, err := database.Update(b, "love", "comment", "collect", "view")
 		if err != nil {
 			log.Error(err)
+		}
+	}
+}
+
+func cubeBlogEsSet(num int, maps []orm.Params) {
+	EsLen, EsMaps := elasticsearch.Client.SearchAll("blog")
+	if num >= EsLen {
+		for index, item := range maps {
+			var box = map[string]interface{}{}
+			box["label_type"] = item["label_type"].(string)
+			box["name"] = item["name"].(string)
+			box["text"] = item["text"].(string)
+			box["title"] = item["title"].(string)
+			box["user_image"] = item["user_image"].(string)
+			box["index"], _ = strconv.Atoi(item["id"].(string))
+			box["date"] = item["date"].(string)
+			box["cube_id"] = item["cube_id"].(string)
+			box["cover"] = item["cover"].(string)
+			bjson, _ := json.Marshal(box)
+			redisValue := string(bjson)
+			elasticsearch.Client.Create("blog", redisValue, index)
+		}
+	} else {
+		for index, item := range EsMaps {
+			if (index + 1) <= num {
+				var box = map[string]interface{}{}
+				box["label_type"] = maps[index]["label_type"].(string)
+				box["user_image"] = maps[index]["user_image"].(string)
+				box["name"] = maps[index]["name"].(string)
+				box["text"] = maps[index]["text"].(string)
+				box["title"] = maps[index]["title"].(string)
+				box["index"], _ = strconv.Atoi(maps[index]["index"].(string))
+				box["date"] = maps[index]["date"].(string)
+				box["cube_id"] = maps[index]["cube_id"].(string)
+				box["cover"] = maps[index]["cover"].(string)
+				bjson, _ := json.Marshal(box)
+				redisValue := string(bjson)
+				elasticsearch.Client.Create("blog", redisValue, index)
+			} else {
+				DocumentId := item.(map[string]interface{})["_id"].(string)
+				elasticsearch.Client.Delete("blog", DocumentId)
+			}
 		}
 	}
 }

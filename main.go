@@ -2,8 +2,10 @@ package main
 
 import (
 	_ "Cube-back/database"
+	_ "Cube-back/elasticsearch"
 	_ "Cube-back/gron"
 	_ "Cube-back/log"
+	_ "Cube-back/message"
 	_ "Cube-back/models"
 	_ "Cube-back/rabbitmq"
 	_ "Cube-back/redis"
