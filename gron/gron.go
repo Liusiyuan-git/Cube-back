@@ -7,7 +7,7 @@ import (
 
 func init() {
 	c := gron.New()
-	c.AddFunc(gron.Every(3*time.Second), func() {
+	c.AddFunc(gron.Every(300*time.Second), func() {
 		cubeTalkNewUpdate()
 		cubeTalkHotUpdate()
 	})

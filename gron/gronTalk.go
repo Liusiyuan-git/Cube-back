@@ -120,7 +120,7 @@ func cubeTalkDetailClean() {
 func cubeTalkEsSet(num int, maps []orm.Params) {
 	EsLen, EsMaps := elasticsearch.Client.SearchAll("blog")
 	if num >= EsLen {
-		for index, item := range maps {
+		for _, item := range maps {
 			var box = map[string]interface{}{}
 			box["images"] = item["images"].(string)
 			box["name"] = item["name"].(string)
@@ -131,7 +131,7 @@ func cubeTalkEsSet(num int, maps []orm.Params) {
 			box["cube_id"] = item["cube_id"].(string)
 			bjson, _ := json.Marshal(box)
 			redisValue := string(bjson)
-			elasticsearch.Client.Create("talk", redisValue, index)
+			elasticsearch.Client.Create("talk", redisValue, box["index"].(int))
 		}
 	} else {
 		for index, item := range EsMaps {
@@ -146,10 +146,10 @@ func cubeTalkEsSet(num int, maps []orm.Params) {
 				box["cube_id"] = maps[index]["cube_id"].(string)
 				bjson, _ := json.Marshal(box)
 				redisValue := string(bjson)
-				elasticsearch.Client.Create("blog", redisValue, index)
+				elasticsearch.Client.Create("talk", redisValue, box["index"].(int))
 			} else {
 				DocumentId := item.(map[string]interface{})["_id"].(string)
-				elasticsearch.Client.Delete("blog", DocumentId)
+				elasticsearch.Client.Delete("talk", DocumentId)
 			}
 		}
 	}

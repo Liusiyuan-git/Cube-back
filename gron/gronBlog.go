@@ -30,7 +30,7 @@ func cubeBlogNewUpdate() {
 		cubeBlogDataSet(num, labelType["all"], "new")
 		cubeBlogDataFilterSet("new", labelType)
 		cubeBlogProfileRedisSet(maps)
-		cubeBlogProfileDbSet(maps)
+		//cubeBlogProfileDbSet(maps)
 		cubeBlogEsSet(int(num), maps)
 	}
 }
@@ -174,8 +174,11 @@ func cubeBlogDataFilterSet(mode string, labelType map[string][]string) {
 	for key := range label {
 		var all []string
 		for _, item := range label[key] {
-			cubeBlogDataSet(int64(len(labelType[item])), labelType[item], item+"_"+mode)
-			all = append(all, labelType[item]...)
+			length := int64(len(labelType[item]))
+			cubeBlogDataSet(length, labelType[item], item+"_"+mode)
+			if length != 0 {
+				all = append(all, labelType[item]...)
+			}
 		}
 		cubeBlogDataSet(int64(len(all)), all, key+"_all_"+mode)
 	}
@@ -213,23 +216,23 @@ func cubeBlogProfileRedisSet(maps []orm.Params) {
 	}
 }
 
-func cubeBlogProfileDbSet(maps []orm.Params) {
-	b := new(blog.Blog)
-	for _, item := range maps {
-		b.Id, _ = strconv.Atoi(item["id"].(string))
-		b.Love, _ = strconv.Atoi(item["love"].(string))
-		b.View, _ = strconv.Atoi(item["view"].(string))
-		_, err := database.Update(b, "love", "comment", "collect", "view")
-		if err != nil {
-			log.Error(err)
-		}
-	}
-}
+//func cubeBlogProfileDbSet(maps []orm.Params) {
+//	b := new(blog.Blog)
+//	for _, item := range maps {
+//		b.Id, _ = strconv.Atoi(item["id"].(string))
+//		b.Love, _ = strconv.Atoi(item["love"].(string))
+//		b.View, _ = strconv.Atoi(item["view"].(string))
+//		_, err := database.Update(b, "love", "comment", "collect", "view")
+//		if err != nil {
+//			log.Error(err)
+//		}
+//	}
+//}
 
 func cubeBlogEsSet(num int, maps []orm.Params) {
 	EsLen, EsMaps := elasticsearch.Client.SearchAll("blog")
 	if num >= EsLen {
-		for index, item := range maps {
+		for _, item := range maps {
 			var box = map[string]interface{}{}
 			box["label_type"] = item["label_type"].(string)
 			box["name"] = item["name"].(string)
@@ -242,7 +245,7 @@ func cubeBlogEsSet(num int, maps []orm.Params) {
 			box["cover"] = item["cover"].(string)
 			bjson, _ := json.Marshal(box)
 			redisValue := string(bjson)
-			elasticsearch.Client.Create("blog", redisValue, index)
+			elasticsearch.Client.Create("blog", redisValue, box["index"].(int))
 		}
 	} else {
 		for index, item := range EsMaps {
@@ -253,13 +256,13 @@ func cubeBlogEsSet(num int, maps []orm.Params) {
 				box["name"] = maps[index]["name"].(string)
 				box["text"] = maps[index]["text"].(string)
 				box["title"] = maps[index]["title"].(string)
-				box["index"], _ = strconv.Atoi(maps[index]["index"].(string))
+				box["index"], _ = strconv.Atoi(maps[index]["id"].(string))
 				box["date"] = maps[index]["date"].(string)
 				box["cube_id"] = maps[index]["cube_id"].(string)
 				box["cover"] = maps[index]["cover"].(string)
 				bjson, _ := json.Marshal(box)
 				redisValue := string(bjson)
-				elasticsearch.Client.Create("blog", redisValue, index)
+				elasticsearch.Client.Create("blog", redisValue, box["index"].(int))
 			} else {
 				DocumentId := item.(map[string]interface{})["_id"].(string)
 				elasticsearch.Client.Delete("blog", DocumentId)
