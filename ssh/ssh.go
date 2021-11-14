@@ -12,6 +12,8 @@ import (
 
 var SftpClient *sftp.Client
 
+var config = map[string]interface{}{}
+
 type Ssh struct {
 	FileServerIp       string
 	FileServerPort     int
@@ -19,13 +21,12 @@ type Ssh struct {
 	FileServerPassword string
 }
 
-func connect(user, password, host string, port int) (*sftp.Client, error) {
+func connect(user, password, host string, port int) (*ssh.Client, error) {
 	var (
 		auth         []ssh.AuthMethod
 		addr         string
 		clientConfig *ssh.ClientConfig
 		sshClient    *ssh.Client
-		sftpClient   *sftp.Client
 		err          error
 	)
 	// get auth method
@@ -44,16 +45,38 @@ func connect(user, password, host string, port int) (*sftp.Client, error) {
 	if sshClient, err = ssh.Dial("tcp", addr, clientConfig); err != nil {
 		return nil, err
 	}
+	return sshClient, nil
+}
 
+func sftpClientCreate(sshClient *ssh.Client) (*sftp.Client, error) {
 	// create sftp client
-	if sftpClient, err = sftp.NewClient(sshClient); err != nil {
+	sftpClient, err := sftp.NewClient(sshClient)
+	if err != nil {
 		return nil, err
 	}
 	return sftpClient, nil
 }
 
+func sessionCreate(sshClient *ssh.Client) (*ssh.Session, error) {
+	var session *ssh.Session
+	session, err := sshClient.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	return session, nil
+}
+
+func CommandExecute(command string) {
+	session, err := createSession()
+	if err != nil {
+		log.Error(err)
+	}
+	defer session.Close()
+	session.Run(command)
+}
+
 func UploadFile(filename string, remotePath string, data []uint8) bool {
-	sftpClient, err := createInstance()
+	sftpClient, err := createSftpClient()
 	if err != nil {
 		log.Error(err)
 		return false
@@ -79,7 +102,7 @@ func UploadFile(filename string, remotePath string, data []uint8) bool {
 }
 
 func RemoveFile(path string) {
-	sftpClient, err := createInstance()
+	sftpClient, err := createSftpClient()
 	if err != nil {
 		log.Error(err)
 	}
@@ -91,7 +114,7 @@ func RemoveFile(path string) {
 }
 
 func RemoveDirectory(remotePath string) *sftp.Client {
-	sftpClient, err := createInstance()
+	sftpClient, err := createSftpClient()
 	if err != nil {
 		log.Error(err)
 	}
@@ -112,9 +135,37 @@ func RemoveDirectory(remotePath string) *sftp.Client {
 	return sftpClient
 }
 
-func createInstance() (*sftp.Client, error) {
+func createSftpClient() (*sftp.Client, error) {
+	sshClient, err := connect(
+		config["FileServerUser"].(string),
+		config["FileServerPassword"].(string),
+		config["FileServerIp"].(string),
+		config["FileServerPort"].(int))
+	if sshClient != nil {
+		return sftpClientCreate(sshClient)
+	} else {
+		return nil, err
+	}
+}
+
+func createSession() (*ssh.Session, error) {
+	sshClient, err := connect(
+		config["FileServerUser"].(string),
+		config["FileServerPassword"].(string),
+		config["FileServerIp"].(string),
+		config["FileServerPort"].(int))
+	if sshClient != nil {
+		return sessionCreate(sshClient)
+	} else {
+		return nil, err
+	}
+}
+
+func init() {
 	conf := new(Ssh)
 	configure.Get(&conf)
-	sftpClient, err := connect(conf.FileServerUser, conf.FileServerPassword, conf.FileServerIp, conf.FileServerPort)
-	return sftpClient, err
+	config["FileServerUser"] = conf.FileServerUser
+	config["FileServerPassword"] = conf.FileServerPassword
+	config["FileServerIp"] = conf.FileServerIp
+	config["FileServerPort"] = conf.FileServerPort
 }

@@ -30,6 +30,8 @@ func apiRegister() {
 			beego.NSRouter("/login.status", &login.Controller{}, "post:LoginStatus"),
 		),
 		beego.NSNamespace("/private",
+			beego.NSRouter("draft.image.upload", &draft.Controller{}, "post:DraftImageUpload"),
+			beego.NSRouter("draft.image.delete", &draft.Controller{}, "post:DraftImageDelete"),
 			beego.NSRouter("/send.blog", &blog.Controller{}, "post:BlogSend"),
 			beego.NSRouter("/send.draft", &draft.Controller{}, "post:DraftSend"),
 			beego.NSRouter("/get.draft", &draft.Controller{}, "post:DraftGet"),
@@ -59,6 +61,8 @@ func apiRegister() {
 			beego.NSRouter("/message.profile.user.talk.clean", &message.Controller{}, "post:MessageProfileUserTalkClean"),
 			beego.NSRouter("/message.profile.user.blog.get", &message.Controller{}, "post:MessageProfileUserBlogGet"),
 			beego.NSRouter("/message.profile.user.blog.clean", &message.Controller{}, "post:MessageProfileUserBlogClean"),
+			beego.NSRouter("/blog.delete", &blog.Controller{}, "post:BlogDelete"),
+			beego.NSRouter("/collect.delete", &blog.Controller{}, "post:CollectDelete"),
 		),
 		beego.NSNamespace("/common",
 			beego.NSRouter("/blog.get", &common.Controller{}, "post:BlogGet"),
@@ -79,6 +83,9 @@ func apiRegister() {
 			beego.NSRouter("/user.profile.care", &common.Controller{}, "post:UserProfileCare"),
 			beego.NSRouter("/user.profile.cared", &common.Controller{}, "post:UserProfileCared"),
 			beego.NSRouter("/profile.leave.get", &common.Controller{}, "post:ProfileLeaveGet"),
+			beego.NSRouter("/blog.search", &common.Controller{}, "post:BlogSearch"),
+			beego.NSRouter("/talk.search", &common.Controller{}, "post:TalkSearch"),
+			beego.NSRouter("/user.search", &common.Controller{}, "post:UserSearch"),
 		),
 	)
 	beego.AddNamespace(ns)

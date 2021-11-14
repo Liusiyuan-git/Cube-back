@@ -24,6 +24,11 @@ type Talk struct {
 	Comment int
 }
 
+type DeleteTalk struct {
+	Id     int
+	TalkId int
+}
+
 func (b *Talk) TalkGet(mode, page string) (interface{}, interface{}, int64, string, bool) {
 	var dataBlock []map[string]interface{}
 	var countBox []string
@@ -120,4 +125,8 @@ func (b *Talk) TalkLike(talkid string) (string, bool) {
 	}
 
 	return "", true
+}
+
+func (b *Talk) TalkSearch(keyWord, page string) (int, interface{}) {
+	return talkEsSearch(keyWord, page)
 }
