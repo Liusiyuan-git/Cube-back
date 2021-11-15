@@ -4,20 +4,27 @@ import (
 	"Cube-back/models/message"
 	"Cube-back/redis"
 	"encoding/json"
+	"math"
 	"strconv"
 )
 
 func profileBlogRedisGet(cubeId, page string) ([]string, int64) {
 	pageInt, _ := strconv.ParseInt(page, 10, 64)
-	var t = redis.LRange("profile_blog_"+cubeId, (pageInt-1)*10, (pageInt-1)*10+9)
 	var l = redis.LLen("profile_blog_" + cubeId)
+	if pageInt > int64(math.Ceil(float64(l)/10)) {
+		pageInt = 1
+	}
+	var t = redis.LRange("profile_blog_"+cubeId, (pageInt-1)*10, (pageInt-1)*10+9)
 	return t, l
 }
 
 func profileTalkRedisGet(cubeId, page string) ([]string, int64) {
 	pageInt, _ := strconv.ParseInt(page, 10, 64)
-	var t = redis.LRange("profile_talk_"+cubeId, (pageInt-1)*10, (pageInt-1)*10+9)
 	var l = redis.LLen("profile_talk_" + cubeId)
+	if pageInt > int64(math.Ceil(float64(l)/10)) {
+		pageInt = 1
+	}
+	var t = redis.LRange("profile_talk_"+cubeId, (pageInt-1)*10, (pageInt-1)*10+9)
 	return t, l
 }
 
@@ -45,8 +52,11 @@ func userImageRedisGet(cubeId string) string {
 func profileCollectRedisGet(cubeid, page string) ([]string, int64) {
 	key := "user_collect_" + cubeid
 	pageInt, _ := strconv.ParseInt(page, 10, 64)
-	var t = redis.LRange(key, (pageInt-1)*10, (pageInt-1)*10+9)
 	var l = redis.LLen(key)
+	if pageInt > int64(math.Ceil(float64(l)/10)) {
+		pageInt = 1
+	}
+	var t = redis.LRange(key, (pageInt-1)*10, (pageInt-1)*10+9)
 	return t, l
 }
 

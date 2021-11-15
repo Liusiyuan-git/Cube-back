@@ -166,7 +166,7 @@ func profileCaredDbGet(cubeId string) (interface{}, bool) {
 			image := fmt.Sprintf("%v", item["image"])
 			name := fmt.Sprintf("%v", item["name"])
 			introduce := fmt.Sprintf("%v", item["introduce"])
-			redis.HSet("user_care_"+cubeId, careId, "1")
+			redis.HSet("user_cared_"+cubeId, careId, "1")
 			careDataBox = append(careDataBox, map[string]interface{}{"cube_id": careId, "name": name, "image": image, "introduce": introduce})
 		}
 	}

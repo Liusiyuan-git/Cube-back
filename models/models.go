@@ -18,10 +18,12 @@ import (
 func ModelRegister() {
 	orm.RegisterModel(new(user.User))
 	orm.RegisterModel(new(blog.Blog))
+	orm.RegisterModel(new(blog.DeleteBlog))
 	orm.RegisterModel(new(draft.Draft))
 	orm.RegisterModel(new(collect.Collect))
 	orm.RegisterModel(new(blogcomment.BlogComment))
 	orm.RegisterModel(new(talk.Talk))
+	orm.RegisterModel(new(talk.DeleteTalk))
 	orm.RegisterModel(new(talkcomment.TalkComment))
 	orm.RegisterModel(new(care.Care))
 	orm.RegisterModel(new(leaveMessage.LeaveMessage))

@@ -84,7 +84,7 @@ func (p *Profile) ProfileCollectGet(cubeId, page string) (interface{}, int64, bo
 		json.Unmarshal([]byte(item), &m)
 		dataBlock = append(dataBlock, m)
 	}
-	return collectData, length, true
+	return dataBlock, length, true
 }
 
 func passwordParamsCheck(phone, password, code string) (string, bool, string) {
@@ -278,4 +278,8 @@ func imagesRemove(images []string) {
 
 func removeDirectory(path string) {
 	ssh.RemoveDirectory(path)
+}
+
+func (p *Profile) UserSearch(keyWord, page string) (int, interface{}) {
+	return UserEsSearch(keyWord, page)
 }
