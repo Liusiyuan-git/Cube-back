@@ -10,11 +10,13 @@ func init() {
 	c.AddFunc(gron.Every(300*time.Second), func() {
 		cubeTalkNewUpdate()
 		cubeTalkHotUpdate()
+		cubeTalkCleanAll()
 	})
 	c.AddFunc(gron.Every(360*time.Second), func() {
 		cubeBlogNewUpdate()
 		cubeBlogHotUpdate()
 		cubeBlogCollectUpdate()
+		cubeBlogCleanAll()
 	})
 	c.AddFunc(gron.Every(420*time.Second), func() {
 		userProfileUpdate()

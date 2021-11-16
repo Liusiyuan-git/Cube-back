@@ -3,11 +3,15 @@ package gron
 import (
 	"Cube-back/database"
 	"Cube-back/elasticsearch"
+	"Cube-back/log"
+	"Cube-back/models/talk"
 	"Cube-back/redis"
+	"Cube-back/ssh"
 	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/client/orm"
 	"strconv"
+	"strings"
 )
 
 func cubeTalkNewUpdate() {
@@ -34,7 +38,9 @@ func cubeTalkDataSet(num int64, maps []orm.Params, mode string) {
 					redis.LSet(key, i, redisValue)
 				}
 				if mode == "new" {
-					go cubeTalkCommentUpdate(fmt.Sprintf("%v", maps[i]["id"]))
+					talkid := fmt.Sprintf("%v", maps[i]["id"])
+					redis.HSet("talk_like_and_comment", talkid+"_like", maps[i]["love"].(string))
+					go cubeTalkCommentUpdate(talkid)
 				}
 			}
 		} else {
@@ -43,6 +49,8 @@ func cubeTalkDataSet(num int64, maps []orm.Params, mode string) {
 				redisValue := string(bjson)
 				redis.LSet(key, i, redisValue)
 				if mode == "new" {
+					talkid := fmt.Sprintf("%v", maps[i]["id"])
+					redis.HSet("talk_like_and_comment", talkid+"_like", maps[i]["love"].(string))
 					go cubeTalkCommentUpdate(fmt.Sprintf("%v", maps[i]["id"]))
 				}
 			}
@@ -82,6 +90,18 @@ func cubeTalkCommentUpdate(talkid string) {
 		} else {
 			redis.LTrim(key, 1, 0)
 		}
+		redis.HSet("talk_like_and_comment", talkid+"_comment", strconv.FormatInt(num, 10))
+		cubeTalkCommentDbUpdate(talkid, int(num))
+	}
+}
+
+func cubeTalkCommentDbUpdate(talkid string, num int) {
+	t := new(talk.Talk)
+	t.Id, _ = strconv.Atoi(talkid)
+	t.Comment = num
+	_, err := database.Update(t, "comment")
+	if err != nil {
+		log.Error(err)
 	}
 }
 
@@ -120,7 +140,7 @@ func cubeTalkDetailClean() {
 func cubeTalkEsSet(num int, maps []orm.Params) {
 	EsLen, EsMaps := elasticsearch.Client.SearchAll("blog")
 	if num >= EsLen {
-		for _, item := range maps {
+		for index, item := range maps {
 			var box = map[string]interface{}{}
 			box["images"] = item["images"].(string)
 			box["name"] = item["name"].(string)
@@ -131,7 +151,7 @@ func cubeTalkEsSet(num int, maps []orm.Params) {
 			box["cube_id"] = item["cube_id"].(string)
 			bjson, _ := json.Marshal(box)
 			redisValue := string(bjson)
-			elasticsearch.Client.Create("talk", redisValue, box["index"].(int))
+			elasticsearch.Client.Create("talk", redisValue, index)
 		}
 	} else {
 		for index, item := range EsMaps {
@@ -146,11 +166,49 @@ func cubeTalkEsSet(num int, maps []orm.Params) {
 				box["cube_id"] = maps[index]["cube_id"].(string)
 				bjson, _ := json.Marshal(box)
 				redisValue := string(bjson)
-				elasticsearch.Client.Create("talk", redisValue, box["index"].(int))
+				elasticsearch.Client.Create("talk", redisValue, index)
 			} else {
 				DocumentId := item.(map[string]interface{})["_id"].(string)
 				elasticsearch.Client.Delete("talk", DocumentId)
 			}
+		}
+	}
+}
+
+func cubeTalkCleanAll() {
+	cmd := `select * from delete_talk`
+	_, maps, pass := database.DBValues(cmd)
+	if pass {
+		cubeTalkCleanRedisAll(maps)
+		cubeTalkCleanImageAll(maps)
+	}
+}
+
+func cubeTalkCleanRedisAll(maps []orm.Params) {
+	for _, item := range maps {
+		talkId, _ := item["talk_id"].(string)
+		redis.Del("talk_comment_" + talkId)
+		redis.HDel("talk_like_and_comment", talkId+"_like")
+		redis.HDel("talk_like_and_comment", talkId+"_comment")
+	}
+}
+
+func cubeTalkCleanImageAll(maps []orm.Params) {
+	var deleteBox []string
+	var deleteString string
+	for _, item := range maps {
+		cubeId, _ := item["cube_id"].(string)
+		date := strings.Join(strings.Split(strings.Split(item["date"].(string), " ")[0], "-"), "")
+		images := item["images"].(string)
+		imagePath := "/home/cube/images/talk/" + cubeId + "/" + date
+		for _, each := range strings.Split(images, ":") {
+			if each != "" {
+				deleteBox = append(deleteBox, each)
+			}
+		}
+		deleteString = strings.Join(deleteBox, " ")
+		if deleteString != "" {
+			ssh.CommandExecute("cd " + imagePath + ";" + "rm -rf " + deleteString)
 		}
 	}
 }

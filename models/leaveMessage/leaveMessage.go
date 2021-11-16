@@ -43,6 +43,15 @@ func (l *LeaveMessage) LeaveGet(cubeId, page string) (interface{}, int64, bool) 
 	return dataBlock, length, true
 }
 
+func (l *LeaveMessage) LeaveDelete(id, cubeId, leaveId, index string) (string, bool) {
+	result, pass := leaveDeleteDb(cubeId, leaveId)
+	if !pass {
+		return result, pass
+	}
+	leaveDeleteRedis(id, index, cubeId)
+	return "", true
+}
+
 func leaveTime() string {
 	t := time.Now().Format("2006-01-02 15:04:05")
 	return t

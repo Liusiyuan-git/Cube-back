@@ -6,10 +6,12 @@ import (
 	"Cube-back/log"
 	"Cube-back/models/blog"
 	"Cube-back/redis"
+	"Cube-back/ssh"
 	"encoding/json"
 	"fmt"
 	"github.com/beego/beego/v2/client/orm"
 	"strconv"
+	"strings"
 )
 
 var label = map[string][]string{
@@ -30,7 +32,6 @@ func cubeBlogNewUpdate() {
 		cubeBlogDataSet(num, labelType["all"], "new")
 		cubeBlogDataFilterSet("new", labelType)
 		cubeBlogProfileRedisSet(maps)
-		//cubeBlogProfileDbSet(maps)
 		cubeBlogEsSet(int(num), maps)
 	}
 }
@@ -216,23 +217,10 @@ func cubeBlogProfileRedisSet(maps []orm.Params) {
 	}
 }
 
-//func cubeBlogProfileDbSet(maps []orm.Params) {
-//	b := new(blog.Blog)
-//	for _, item := range maps {
-//		b.Id, _ = strconv.Atoi(item["id"].(string))
-//		b.Love, _ = strconv.Atoi(item["love"].(string))
-//		b.View, _ = strconv.Atoi(item["view"].(string))
-//		_, err := database.Update(b, "love", "comment", "collect", "view")
-//		if err != nil {
-//			log.Error(err)
-//		}
-//	}
-//}
-
 func cubeBlogEsSet(num int, maps []orm.Params) {
 	EsLen, EsMaps := elasticsearch.Client.SearchAll("blog")
 	if num >= EsLen {
-		for _, item := range maps {
+		for index, item := range maps {
 			var box = map[string]interface{}{}
 			box["label_type"] = item["label_type"].(string)
 			box["name"] = item["name"].(string)
@@ -245,7 +233,7 @@ func cubeBlogEsSet(num int, maps []orm.Params) {
 			box["cover"] = item["cover"].(string)
 			bjson, _ := json.Marshal(box)
 			redisValue := string(bjson)
-			elasticsearch.Client.Create("blog", redisValue, box["index"].(int))
+			elasticsearch.Client.Create("blog", redisValue, index)
 		}
 	} else {
 		for index, item := range EsMaps {
@@ -262,7 +250,7 @@ func cubeBlogEsSet(num int, maps []orm.Params) {
 				box["cover"] = maps[index]["cover"].(string)
 				bjson, _ := json.Marshal(box)
 				redisValue := string(bjson)
-				elasticsearch.Client.Create("blog", redisValue, box["index"].(int))
+				elasticsearch.Client.Create("blog", redisValue, index)
 			} else {
 				DocumentId := item.(map[string]interface{})["_id"].(string)
 				elasticsearch.Client.Delete("blog", DocumentId)
@@ -309,6 +297,45 @@ func cubeBlogCollectDbUpdate(splitBox map[string]int) {
 		_, err := database.Update(b, "collect")
 		if err != nil {
 			log.Error(err)
+		}
+	}
+}
+
+func cubeBlogCleanAll() {
+	cmd := `select * from delete_blog`
+	_, maps, pass := database.DBValues(cmd)
+	if pass {
+		cubeBlogCleanRedisAll(maps)
+		cubeBlogCleanImageAll(maps)
+	}
+}
+
+func cubeBlogCleanRedisAll(maps []orm.Params) {
+	for _, item := range maps {
+		blogId, _ := item["blog_id"].(string)
+		redis.HDel("blog_detail", blogId)
+		redis.Del("blog_detail_comment_" + blogId)
+		redis.Del("blog_profile_" + blogId)
+	}
+}
+
+func cubeBlogCleanImageAll(maps []orm.Params) {
+	var deleteBox []string
+	var deleteString string
+	for _, item := range maps {
+		cubeId, _ := item["cube_id"].(string)
+		date := strings.Join(strings.Split(strings.Split(item["date"].(string), " ")[0], "-"), "")
+		cover := item["cover"].(string)
+		image := item["image"].(string)
+		imagePath := "/home/cube/images/blog/" + cubeId + "/" + date
+		for _, each := range strings.Split(cover+":"+image, ":") {
+			if each != "" {
+				deleteBox = append(deleteBox, each)
+			}
+		}
+		deleteString = strings.Join(deleteBox, " ")
+		if deleteString != "" {
+			ssh.CommandExecute("cd " + imagePath + ";" + "rm -rf " + deleteString)
 		}
 	}
 }
