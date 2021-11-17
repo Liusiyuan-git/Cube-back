@@ -101,10 +101,11 @@ func profileCaredRedisGet(cubeId string) []map[string]interface{} {
 	}
 	return careDataBox
 }
-func userMessageRedisSet(message *message.Message) {
+func userMessageRedisSet(insertId int64, message *message.Message) {
 	b := make(map[string]interface{})
 	userName := redis.HGet("session", message.SendId)
 	userImage := redis.HGet("user_profile_"+message.SendId, "image")
+	b["id"] = strconv.FormatInt(insertId, 10)
 	b["cube_id"] = message.CubeId
 	b["send_id"] = message.SendId
 	b["date"] = message.Date

@@ -180,20 +180,24 @@ func userCareDbSet(id, cubeId string) error {
 	_, err := database.Insert(c)
 	if err != nil {
 		log.Error(err)
+		return err
 	}
-	return err
+	userCareRedisSet(id, cubeId)
+	return nil
 }
 
-func userCareMessageDbSet(id, cubeId string) (*message.Message, error) {
+func userCareMessageDbSet(id, cubeId string) error {
 	m := new(message.Message)
 	m.CubeId = id
 	m.SendId = cubeId
 	m.Text = "感谢关注！！！ 😄"
 	m.Care = 1
 	m.Date = time.Now().Format("2006-01-02 15:04:05")
-	_, err := database.Insert(m)
+	insertId, err := database.Insert(m)
 	if err != nil {
 		log.Error(err)
+		return err
 	}
-	return m, err
+	userMessageRedisSet(insertId, m)
+	return nil
 }

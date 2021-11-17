@@ -145,12 +145,10 @@ func (p *Profile) UserImageUpdate(cubeId string) (interface{}, bool) {
 
 func (p *Profile) UserCareSet(id, cubeId string) (string, bool) {
 	err1 := userCareDbSet(id, cubeId)
-	m, err2 := userCareMessageDbSet(id, cubeId)
+	err2 := userCareMessageDbSet(id, cubeId)
 	if err1 != nil || err2 != nil {
 		return "未知错误", false
 	}
-	userCareRedisSet(id, cubeId)
-	userMessageRedisSet(m)
 	go userMessageSend(id, cubeId)
 	return "", true
 }

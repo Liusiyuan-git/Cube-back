@@ -107,3 +107,15 @@ func (c *Controller) ProfileLeaveSet() {
 	result := make(map[string]interface{})
 	c.DataCallBack(result, pass)
 }
+
+func (c *Controller) ProfileLeaveDelete() {
+	data := c.RequestBodyData()
+	id := data["id"]
+	cubeId := data["cube_id"]
+	leaveId := data["leave_id"]
+	index := data["index"]
+	msg, pass := l.LeaveDelete(id, cubeId, leaveId, index)
+	result := make(map[string]interface{})
+	result["msg"] = msg
+	c.DataCallBack(result, pass)
+}
