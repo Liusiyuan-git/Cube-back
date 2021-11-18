@@ -6,6 +6,7 @@ import (
 	"Cube-back/models/message"
 	"Cube-back/redis"
 	"encoding/json"
+	"strconv"
 )
 
 func talkDbGet(mode string) (interface{}, int64, bool) {
@@ -26,7 +27,7 @@ func talkDbGet(mode string) (interface{}, int64, bool) {
 		}
 		redis.Set(key+"_get", "false")
 		if num >= 10 {
-			return maps[0:9], num, true
+			return maps[0:10], num, true
 		} else {
 			return maps[0:], num, true
 		}
@@ -46,24 +47,37 @@ func talkDbCmdModeSet(cmd, mode string) string {
 	return cmd
 }
 
-func talkMessageSendDb(b *Talk) {
+func talkDeleteDb(images, cubeId, talkId, date string) (string, bool) {
+	cmd := "DELETE FROM talk where id=? and cube_id=?"
+	_, _, pass := database.DBValues(cmd, talkId, cubeId)
+	if !pass {
+		return "删除失败", false
+	}
+	db := new(DeleteTalk)
+	db.TalkId, _ = strconv.Atoi(talkId)
+	db.Images = images
+	db.CubeId = cubeId
+	db.Date = date
+	database.Insert(db)
+	return "", true
+}
+
+func talkMessageSendDb(talkid int64, b *Talk) {
 	var userTalkText string
 	m := new(message.Message)
 	caredBox := userCareRedisGet(b.CubeId)
-	if len(b.Text) > 30 {
-		userTalkText = b.Text[30:]
-	} else {
-		userTalkText = b.Text
-	}
 	for _, item := range caredBox {
 		m.CubeId = item
 		m.SendId = b.CubeId
 		m.Text = userTalkText
 		m.Talk = 1
+		m.TalkId = int(talkid)
 		m.Date = b.Date
-		_, err := database.Insert(m)
+		messageId, err := database.Insert(m)
 		if err != nil {
 			log.Error(err)
+			continue
 		}
+		talkMessageSendRedis(item, messageId, talkid, b)
 	}
 }

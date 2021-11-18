@@ -2,7 +2,6 @@ package talkcomment
 
 import (
 	"Cube-back/database"
-	"Cube-back/models/talk"
 	"Cube-back/redis"
 	"strconv"
 	"time"
@@ -16,7 +15,7 @@ type TalkComment struct {
 	Date    string `orm:"index;type(datetime)"`
 }
 
-func (b *TalkComment) TalkCommentSend(talkid, cubeid, comment string) (string, bool) {
+func (b *TalkComment) TalkCommentSend(talkid, cubeid, talkCubeId, comment string) (string, bool) {
 	id, _ := strconv.Atoi(talkid)
 	b.Id = 0
 	b.TalkId = id
@@ -27,16 +26,16 @@ func (b *TalkComment) TalkCommentSend(talkid, cubeid, comment string) (string, b
 	if err != nil {
 		return "评论出错", false
 	}
-	t := new(talk.Talk)
 	redis.HIncrBy("talk_like_and_comment", talkid+"_comment", 1)
-	t.Id, _ = strconv.Atoi(talkid)
-	t.Comment, _ = strconv.Atoi(redis.HGet("talk_like_and_comment", talkid+"_comment"))
-	_, err = database.Update(t, "comment")
-	if err != nil {
-		return "未知錯誤", false
-	}
 	TalkCommentRedisSend(talkCommentId, talkid, *b)
+	if cubeid != talkCubeId {
+		go talkCommentMessageSend(talkCubeId, cubeid, b)
+	}
 	return "", true
+}
+
+func talkCommentMessageSend(talkCubeId, cubeid string, b *TalkComment) {
+	talkCommentMessageSendDb(talkCubeId, cubeid, b)
 }
 
 func (b *TalkComment) TalkCommonGet(talkId, page string) (interface{}, int64, bool) {
@@ -51,26 +50,18 @@ func (b *TalkComment) TalkCommonGet(talkId, page string) (interface{}, int64, bo
 	talkCommentRedisLock(key, "true")
 	result, length, pass := talkCommentDbGet(talkId)
 	talkCommentRedisLock(key, "false")
-	talkDetailRedisSet(talkId)
 	if pass {
 		return result, length, true
 	}
 	return "", 0, false
 }
 
-func (b *TalkComment) TalkCommentDelete(talkcommentid, cubeid, talkid, commentCount, index string) (string, bool) {
+func (b *TalkComment) TalkCommentDelete(talkcommentid, cubeid, talkid, index string) (string, bool) {
 	cmd := "DELETE FROM talk_comment where id=? and cube_id=?"
 	_, _, pass := database.DBValues(cmd, talkcommentid, cubeid)
 	if !pass {
 		return "删除失败", false
 	}
-	talkCommentDeleteRedisUpdate(talkid, index)
-	t := new(talk.Talk)
-	t.Id, _ = strconv.Atoi(talkid)
-	t.Comment, _ = strconv.Atoi(commentCount)
-	_, err := database.Update(t, "comment")
-	if err != nil {
-		return "未知错误", false
-	}
+	talkCommentDeleteRedisUpdate(talkcommentid, talkid, index)
 	return "", true
 }
