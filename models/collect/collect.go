@@ -33,6 +33,15 @@ func (o *Collect) CollectProfileGet(blogId string) (interface{}, bool) {
 	return redis.HMGet("blog_profile_"+blogId, []string{"love", "collect"}), true
 }
 
+func (o *Collect) CollectDelete(index, blogId, cubeId string) (string, bool) {
+	result, pass := collectDeleteDb(blogId, cubeId)
+	if !pass {
+		return result, pass
+	}
+	collectDeleteRedis(index, blogId, cubeId)
+	return "", true
+}
+
 func (o *Collect) BlogCollectionGet(cubeid string) (interface{}, int64, bool) {
 	var dataBlock []map[string]interface{}
 	collectData, length := collectRedisGet(cubeid)
@@ -45,5 +54,5 @@ func (o *Collect) BlogCollectionGet(cubeid string) (interface{}, int64, bool) {
 		json.Unmarshal([]byte(item), &m)
 		dataBlock = append(dataBlock, m)
 	}
-	return collectData, int64(length), true
+	return dataBlock, int64(length), true
 }

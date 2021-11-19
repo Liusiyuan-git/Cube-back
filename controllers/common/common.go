@@ -218,3 +218,36 @@ func (c *Controller) ProfileLeaveGet() {
 	result["length"] = length
 	c.DataCallBack(result, pass)
 }
+
+func (c *Controller) BlogSearch() {
+	data := c.RequestBodyData()
+	keyWord := data["keyWord"]
+	page := data["page"]
+	length, content := b.BlogSearch(keyWord, page)
+	result := make(map[string]interface{})
+	result["content"] = content
+	result["length"] = length
+	c.DataCallBack(result, true)
+}
+
+func (c *Controller) TalkSearch() {
+	data := c.RequestBodyData()
+	keyWord := data["keyWord"]
+	page := data["page"]
+	length, content := t.TalkSearch(keyWord, page)
+	result := make(map[string]interface{})
+	result["content"] = content
+	result["length"] = length
+	c.DataCallBack(result, true)
+}
+
+func (c *Controller) UserSearch() {
+	data := c.RequestBodyData()
+	keyWord := data["keyWord"]
+	page := data["page"]
+	length, content := p.UserSearch(keyWord, page)
+	result := make(map[string]interface{})
+	result["content"] = content
+	result["length"] = length
+	c.DataCallBack(result, true)
+}
