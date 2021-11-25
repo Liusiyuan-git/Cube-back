@@ -1,6 +1,7 @@
 package leaveMessage
 
 import (
+	"Cube-back/models/user"
 	"Cube-back/rabbitmq"
 	"Cube-back/redis"
 	"encoding/json"
@@ -18,17 +19,19 @@ type LeaveMessage struct {
 
 func (l *LeaveMessage) LeaveSet(cubeId, leaveId, text string) bool {
 	err1 := leaveDbSet(l, cubeId, leaveId, text)
-	m, err2 := leaveMessageDbSet(cubeId, leaveId, text)
+	err2 := leaveMessageDbSet(cubeId, leaveId, text)
 	if err1 != nil || err2 != nil {
 		return false
 	}
-	leaveRedisSet(cubeId, leaveId, l)
-	leaveMessageRedisSet(m)
 	go rabbitmq.MessageQueue.MessageSend(cubeId, fmt.Sprintf("%v", redis.HIncrBy("user_message_profile_"+cubeId, "total", 1)))
 	return true
 }
 
 func (l *LeaveMessage) LeaveGet(cubeId, page string) (interface{}, int64, bool) {
+	_, pass := user.NumberCorrect(cubeId)
+	if !pass {
+		return []interface{}{}, 0, false
+	}
 	var dataBlock []interface{}
 	leaveData, length := leaveRedisGet(cubeId, page)
 	if length == 0 {
@@ -44,6 +47,10 @@ func (l *LeaveMessage) LeaveGet(cubeId, page string) (interface{}, int64, bool) 
 }
 
 func (l *LeaveMessage) LeaveDelete(id, cubeId, leaveId, index string) (string, bool) {
+	msg, pass := user.NumberCorrect(cubeId, leaveId)
+	if !pass {
+		return msg, false
+	}
 	result, pass := leaveDeleteDb(cubeId, leaveId)
 	if !pass {
 		return result, pass
