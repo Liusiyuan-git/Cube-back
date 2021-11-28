@@ -2,14 +2,11 @@ package blog
 
 import (
 	"Cube-back/database"
-	"Cube-back/log"
 	"Cube-back/models/draft"
+	"Cube-back/models/user"
 	"Cube-back/redis"
-	"Cube-back/ssh"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"github.com/siddontang/go/bson"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -32,24 +29,25 @@ type Blog struct {
 	View      int
 }
 
+type DeleteBlog struct {
+	Id     int
+	BlogId int
+	CubeId string
+	Image  string `orm:"type(text)"`
+	Cover  string `orm:"type(text)"`
+	Date   string `orm:"index;type(datetime)"`
+}
+
 func (b *Blog) BlogSend(cubeid, cover, title, content, text, images, label, labelType string) (string, bool) {
-	var coverName string
-	var contentImage string
-	var msg string
-	var pass bool
-	if cover != "" {
-		coverName, msg, pass = coverSave(cubeid, cover)
-		if !pass {
-			return msg, false
-		}
-	}
-	contentImage, msg, pass = imageSave(cubeid, images)
+	msg, pass := user.NumberCorrect(cubeid)
 	if !pass {
 		return msg, false
 	}
+	var contentImage string
+	contentImage = imageSave(images)
 	b.Id = 0
 	b.CubeId = cubeid
-	b.Cover = coverName
+	b.Cover = cover
 	b.Title = title
 	b.Content = content
 	b.Text = text
@@ -66,15 +64,20 @@ func (b *Blog) BlogSend(cubeid, cover, title, content, text, images, label, labe
 		return "发送错误", false
 	}
 	blogSendRedis(blogid, *b)
-	r := new(draft.Draft)
-	r.DraftRemove(cubeid)
-	go blogMessageSend(b)
+	go draftHandle(cubeid, cover, contentImage)
+	go blogMessageSend(blogid, b)
 	return "", true
 }
 
-func blogMessageSend(b *Blog) {
-	blogMessageSendDb(b)
-	blogMessageSendRedis(b)
+func draftHandle(cubeid, cover, contentImage string) {
+	r := new(draft.Draft)
+	r.DraftImageMove(cubeid, cover+":"+contentImage)
+	r.DraftRemove(cubeid)
+}
+
+func blogMessageSend(blogid int64, b *Blog) {
+	blogMessageDetailSet(blogid, b)
+	blogMessageSendDb(blogid, b)
 }
 
 func blogTime() string {
@@ -109,32 +112,40 @@ func (b *Blog) BlogView(id string) (string, bool) {
 }
 
 func (b *Blog) BlogGet(mode, page, label, labeltype string) (interface{}, interface{}, int64, string, bool) {
-	var dataBlock []map[string]interface{}
-	var countBox [][]interface{}
 	blogData, length := blodRedisGet(mode, page, label, labeltype)
 	if len(blogData) == 0 {
 		blogDb, length, pass := blogDbGet(mode, label, labeltype)
-		return blogDb, countBox, length, "db", pass
+		return blogDb, [][]interface{}{}, length, "db", pass
 	}
-	for _, item := range blogData {
-		var m map[string]interface{}
-		json.Unmarshal([]byte(item), &m)
-		id := fmt.Sprintf("%v", m["id"])
-		countBox = append(countBox, redis.HMGet("blog_profile_"+id, []string{"love", "comment", "collect", "view"}))
-		dataBlock = append(dataBlock, m)
-	}
+	dataBlock, countBox := blodRedisGetAfter(blogData)
 	return dataBlock, countBox, length, "redis", true
+}
+
+func (b *Blog) BlogDelete(date, cover, image, label, labelType, index, blogId, cubeId string) (string, bool) {
+	msg, pass := user.NumberCorrect(blogId, cubeId)
+	if !pass {
+		return msg, pass
+	}
+	result, pass := blogDeleteDb(date, cover, image, blogId, cubeId)
+	if !pass {
+		return result, pass
+	}
+	blogDeleteRedis(label, labelType, index, blogId, cubeId)
+	return "", true
 }
 
 func (b *Blog) BlogForumGet(mode, page string) (interface{}, int64, bool) {
 	var dataBlock []map[string]interface{}
 	var t []string
-	p, _ := strconv.Atoi(page)
+	p, _ := strconv.ParseInt(page, 10, 64)
 	if mode == "all" {
 		mode = "new"
 	}
-	t = redis.LRange("blog_"+mode, int64(0+(p-1)*10), int64(0+p*10-1))
 	l := redis.LLen("blog_" + mode)
+	if p > int64(math.Ceil(float64(l)/10)) {
+		p = 1
+	}
+	t = redis.LRange("blog_"+mode, int64(0+(p-1)*10), int64(0+p*10-1))
 	if t == nil {
 		return t, 0, false
 	}
@@ -147,6 +158,10 @@ func (b *Blog) BlogForumGet(mode, page string) (interface{}, int64, bool) {
 }
 
 func (b *Blog) BlogDetail(id string) (interface{}, bool) {
+	_, pass := user.NumberCorrect(id)
+	if !pass {
+		return "", false
+	}
 	key := "blog_detail_" + id + "_get"
 	result, pass := blogDetailRedisGet(id)
 	if pass {
@@ -164,65 +179,18 @@ func (b *Blog) BlogDetail(id string) (interface{}, bool) {
 	return "", false
 }
 
-func coverSave(cubeid, code string) (string, string, bool) {
-	t, data, pass := base64Decode(code)
-	if !pass {
-		return "", "发送错误", false
-	}
-	bsonid := bson.NewObjectId()
-	timeSplit := strings.Split(time.Now().Format("2006-01-02"), "-")
-	timeJoin := strings.Join(timeSplit, "")
-	filename := fmt.Sprintf("cover%s.%s", bsonid.Hex(), t)
-	filepath := fmt.Sprintf("/home/cube/images/blog/%s/%s", cubeid, timeJoin)
-	pass = ssh.UploadFile(filename, filepath, data)
-	if !pass {
-		imagesRemove([]string{filepath + filename})
-		return "", "发送错误", false
-	}
-	return filename, "", true
-}
-
-func imageSave(cubeid, code string) (string, string, bool) {
+func imageSave(filenameBox string) string {
 	var box [][]string
 	var imagelist []string
-	json.Unmarshal([]byte(code), &box)
-	for index, list := range box {
-		for _, image := range list {
-			t, data, pass := base64Decode(image)
-			if !pass {
-				return "", "发送错误", false
-			}
-			bsonid := bson.NewObjectId()
-			timeSplit := strings.Split(time.Now().Format("2006-01-02"), "-")
-			timeJoin := strings.Join(timeSplit, "")
-			filename := fmt.Sprintf("content%s%d.%s", bsonid.Hex(), index, t)
-			filepath := fmt.Sprintf("/home/cube/images/blog/%s/%s", cubeid, timeJoin)
-			pass = ssh.UploadFile(filename, filepath, data)
-			if !pass {
-				imagesRemove(imagelist)
-				return "", "发送错误", false
-			}
+	json.Unmarshal([]byte(filenameBox), &box)
+	for _, list := range box {
+		for _, filename := range list {
 			imagelist = append(imagelist, filename)
 		}
 	}
-	return strings.Join(imagelist, ":"), "", true
+	return strings.Join(imagelist, ":")
 }
 
-func base64Decode(code string) (string, []uint8, bool) {
-	s := strings.Split(code, "data:image/")
-	t := strings.Split(s[1], ";")
-	enc := base64.StdEncoding
-	data, err := enc.DecodeString(t[1][7:])
-	if err != nil {
-		log.Error(err)
-		return "", make([]uint8, 1), false
-	} else {
-		return t[0], data, true
-	}
-}
-
-func imagesRemove(images []string) {
-	for _, item := range images {
-		ssh.RemoveFile(item)
-	}
+func (b *Blog) BlogSearch(keyWord, page string) (int, interface{}) {
+	return blogEsSearch(keyWord, page)
 }
