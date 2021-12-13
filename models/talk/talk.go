@@ -3,6 +3,7 @@ package talk
 import (
 	"Cube-back/database"
 	"Cube-back/log"
+	"Cube-back/models/user"
 	"Cube-back/redis"
 	"Cube-back/ssh"
 	"encoding/base64"
@@ -27,6 +28,9 @@ type Talk struct {
 type DeleteTalk struct {
 	Id     int
 	TalkId int
+	Date   string
+	CubeId string
+	Images string `orm:"type(text)"`
 }
 
 func (b *Talk) TalkGet(mode, page string) (interface{}, interface{}, int64, string, bool) {
@@ -66,13 +70,26 @@ func (b *Talk) TalkSend(cubeid, text, images string) (string, bool) {
 		return "发送出错", false
 	}
 	talkSendRedis(talkid, *b)
-	go talkMessageSend(b)
+	go talkMessageSend(talkid, b)
 	return "", true
 }
 
-func talkMessageSend(b *Talk) {
-	talkMessageSendDb(b)
-	talkMessageSendRedis(b)
+func (b *Talk) TalkDelete(images, cubeId, talkId, index, date string) (string, bool) {
+	msg, pass := user.NumberCorrect(cubeId, talkId)
+	if !pass {
+		return msg, false
+	}
+	result, pass := talkDeleteDb(images, cubeId, talkId, date)
+	if !pass {
+		return result, pass
+	}
+	talkDeleteRedis(index, talkId, cubeId)
+	return "", true
+}
+
+func talkMessageSend(talkid int64, b *Talk) {
+	talkMessageDetailSet(talkid, b)
+	talkMessageSendDb(talkid, b)
 }
 
 func talkSendImages(cubeid, images string) (string, string, bool) {
