@@ -4,8 +4,10 @@ import (
 	"Cube-back/database"
 	"Cube-back/models/common/crypt"
 	"Cube-back/models/user"
+	"Cube-back/rabbitmq"
 	"Cube-back/redis"
-	"github.com/go-basic/uuid"
+	"Cube-back/snowflake"
+	"fmt"
 )
 
 type Register struct {
@@ -26,20 +28,24 @@ func (r *Register) UserRegister(email, password, phone, code string) (string, bo
 		return "注册失败，请稍后再试", false
 	}
 	userRedisProfile(u.CubeId, u.Phone)
+	rabbitmq.MessageQueue.MessageSend(cubeId, fmt.Sprintf("%v", "欢迎来到cube"))
 	return "", true
 }
 
 func userRedisProfile(cubeId, phone string) {
 	key := "user_profile_" + cubeId
-	redis.HSet(key, "name", phone[0:3]+"****"+phone[7:])
-	redis.HIncrBy(key, "blog", 0)
-	redis.HIncrBy(key, "blog", 0)
-	redis.HIncrBy(key, "talk", 0)
-	redis.HIncrBy(key, "collect", 0)
-	redis.HIncrBy(key, "cared", 0)
-	redis.HIncrBy(key, "care", 0)
-	redis.HIncrBy(key, "leave", 0)
-	redis.HIncrBy(key, "message", 0)
+	txpipeline := redis.TxPipeline()
+	txpipeline.HSet(key, "name", phone[0:3]+"****"+phone[7:])
+	txpipeline.HIncrBy(key, "blog", 0)
+	txpipeline.HIncrBy(key, "blog", 0)
+	txpipeline.HIncrBy(key, "talk", 0)
+	txpipeline.HIncrBy(key, "collect", 0)
+	txpipeline.HIncrBy(key, "cared", 0)
+	txpipeline.HIncrBy(key, "care", 0)
+	txpipeline.HIncrBy(key, "leave", 0)
+	txpipeline.HIncrBy(key, "message", 0)
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func registerParamsCheck(email, password, phone, code string) (string, bool) {
@@ -97,6 +103,6 @@ func paramsRepeat(email, phone string) (string, bool) {
 }
 
 func getCubeId() string {
-	cubeId := uuid.New()
+	cubeId := snowflake.NewNode.NewId()
 	return cubeId
 }

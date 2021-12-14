@@ -52,6 +52,10 @@ func Set(key, value string) {
 	_ = client.Set(key, value, 0).Val()
 }
 
+func Lock(key, value string) {
+	_ = client.Set(key, value, 60000000000).Val()
+}
+
 func Del(key string) {
 	_ = client.Del(key).Val()
 }
@@ -194,6 +198,20 @@ func LTrim(key string, start, stop int64) {
 	if err != nil {
 		log.Error(err)
 	}
+}
+
+func Pipeline() redis.Pipeliner {
+	pipeline := client.Pipeline()
+	return pipeline
+}
+func TxPipeline() redis.Pipeliner {
+	txpipeline := client.TxPipeline()
+	return txpipeline
+}
+
+func StringStringMapCmd() []*redis.StringStringMapCmd {
+	return make([]*redis.StringStringMapCmd, 0)
+
 }
 
 func Test() {
