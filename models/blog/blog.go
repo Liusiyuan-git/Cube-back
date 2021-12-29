@@ -111,14 +111,17 @@ func (b *Blog) BlogView(id string) (string, bool) {
 	return "", true
 }
 
-func (b *Blog) BlogGet(mode, page, label, labeltype string) (interface{}, interface{}, int64, string, bool) {
+func (b *Blog) BlogGet(mode, page, label, labeltype string) (interface{}, int64, string, bool) {
 	blogData, length := blodRedisGet(mode, page, label, labeltype)
 	if len(blogData) == 0 {
 		blogDb, length, pass := blogDbGet(mode, label, labeltype)
-		return blogDb, [][]interface{}{}, length, "db", pass
+		return blogDb, length, "db", pass
 	}
-	dataBlock, countBox := blodRedisGetAfter(blogData)
-	return dataBlock, countBox, length, "redis", true
+	return blogData, length, "redis", true
+}
+
+func (b *Blog) BlogProfileGet(ids string) interface{} {
+	return blogProfileRedisGet(ids)
 }
 
 func (b *Blog) BlogDelete(date, cover, image, label, labelType, index, blogId, cubeId string) (string, bool) {
