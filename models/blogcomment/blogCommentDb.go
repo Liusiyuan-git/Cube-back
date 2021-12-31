@@ -2,6 +2,8 @@ package blogcomment
 
 import (
 	"Cube-back/database"
+	"Cube-back/log"
+	"Cube-back/models/message"
 	"Cube-back/redis"
 	"encoding/json"
 	"fmt"
@@ -14,14 +16,17 @@ func blogCommentDbGet(blogid string) (interface{}, int64, bool) {
 	if !pass {
 		return "", 0, false
 	} else {
+		txpipeline := redis.TxPipeline()
 		for _, item := range maps {
 			bjson, _ := json.Marshal(item)
 			redisValue := string(bjson)
-			redis.RPush("blog_detail_comment_"+blogid, redisValue)
+			txpipeline.RPush("blog_detail_comment_"+blogid, redisValue)
 		}
-		redis.HSet("blog_profile_"+blogid, "comment", fmt.Sprintf("%v", num))
+		txpipeline.HSet("blog_profile_"+blogid, "comment", fmt.Sprintf("%v", num))
+		txpipeline.Exec()
+		txpipeline.Close()
 		if len(maps) >= 10 {
-			return maps[0:9], num, true
+			return maps[0:10], num, true
 		} else {
 			return maps[0:], num, true
 		}
@@ -42,4 +47,19 @@ func blogCommentSendDb(bc *BlogComment, blogid, cubeid, comment, date string) (i
 	bc.Date = date
 	commentId, err1 := database.Insert(bc)
 	return commentId, err1
+}
+
+func blogCommentMessageSendDb(cubeid, blogCubeId string, bc *BlogComment) {
+	m := new(message.Message)
+	m.CubeId = blogCubeId
+	m.SendId = cubeid
+	m.BlogComment = 1
+	m.Text = bc.Comment
+	m.BlogId = bc.BlogId
+	m.Date = bc.Date
+	msgId, err := database.Insert(m)
+	if err != nil {
+		log.Error(err)
+	}
+	blogCommentMessageSendRedis(blogCubeId, cubeid, msgId, bc)
 }
