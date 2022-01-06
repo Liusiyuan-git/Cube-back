@@ -29,13 +29,21 @@ func (c *Controller) BlogGet() {
 	page := data["page"]
 	label := data["label"]
 	labelType := data["label_type"]
-	content, profile, length, mode, pass := b.BlogGet(mode, page, label, labelType)
+	content, length, mode, pass := b.BlogGet(mode, page, label, labelType)
 	result := make(map[string]interface{})
 	result["content"] = content
-	result["profile"] = profile
 	result["length"] = length
 	result["mode"] = mode
 	c.DataCallBack(result, pass)
+}
+
+func (c *Controller) BlogProfileGet() {
+	data := c.RequestBodyData()
+	ids := data["ids"]
+	profile := b.BlogProfileGet(ids)
+	result := make(map[string]interface{})
+	result["profile"] = profile
+	c.DataCallBack(result, true)
 }
 
 func (c *Controller) BlogForumGet() {

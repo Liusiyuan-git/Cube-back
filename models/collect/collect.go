@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"Cube-back/models/user"
 	"Cube-back/redis"
 	"encoding/json"
 )
@@ -21,6 +22,10 @@ func (o *Collect) BlogCollect(cubeid, blogid, cover, date, title, labelType stri
 }
 
 func (o *Collect) BlogCollectConfirm(id, cubeid string) bool {
+	_, pass := user.NumberCorrect(id, cubeid)
+	if !pass {
+		return false
+	}
 	ok := BlogCollectConfirmRedisGet(id, cubeid)
 	if ok {
 		return ok
@@ -34,6 +39,10 @@ func (o *Collect) CollectProfileGet(blogId string) (interface{}, bool) {
 }
 
 func (o *Collect) CollectDelete(index, blogId, cubeId string) (string, bool) {
+	msg, pass := user.NumberCorrect(blogId, cubeId)
+	if !pass {
+		return msg, pass
+	}
 	result, pass := collectDeleteDb(blogId, cubeId)
 	if !pass {
 		return result, pass
@@ -43,6 +52,10 @@ func (o *Collect) CollectDelete(index, blogId, cubeId string) (string, bool) {
 }
 
 func (o *Collect) BlogCollectionGet(cubeid string) (interface{}, int64, bool) {
+	_, pass := user.NumberCorrect(cubeid)
+	if !pass {
+		return []map[string]interface{}{}, 0, false
+	}
 	var dataBlock []map[string]interface{}
 	collectData, length := collectRedisGet(cubeid)
 	if len(collectData) == 0 {
