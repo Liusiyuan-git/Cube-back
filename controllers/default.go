@@ -10,7 +10,7 @@ type MainController struct {
 	beego.Controller
 }
 
-func (c *MainController) RequestBodyData() (d map[string]string) {
+func (c *MainController) RequestBodyData() map[string]string {
 	var data map[string]string
 	_ = json.Unmarshal(c.Ctx.Input.RequestBody, &data)
 	return data
