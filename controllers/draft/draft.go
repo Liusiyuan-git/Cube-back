@@ -41,3 +41,24 @@ func (o *Controller) DraftRemove() {
 	result["content"] = content
 	o.DataCallBack(result, pass)
 }
+
+func (o *Controller) DraftImageUpload() {
+	data := o.RequestBodyData()
+	cubeId := data["cube_id"]
+	image := data["image"]
+	mode := data["mode"]
+	filename, message, pass := d.DraftImageUpload(cubeId, image, mode)
+	result := make(map[string]interface{})
+	result["filename"] = filename
+	result["message"] = message
+	o.DataCallBack(result, pass)
+}
+
+func (o *Controller) DraftImageDelete() {
+	data := o.RequestBodyData()
+	cubeId := data["cube_id"]
+	filename := data["filename"]
+	pass := d.DraftImageDelete(cubeId, filename)
+	result := make(map[string]interface{})
+	o.DataCallBack(result, pass)
+}

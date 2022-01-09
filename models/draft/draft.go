@@ -3,6 +3,7 @@ package draft
 import (
 	"Cube-back/database"
 	"Cube-back/log"
+	"Cube-back/models/user"
 	"Cube-back/ssh"
 	"encoding/base64"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"github.com/siddontang/go/bson"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Draft struct {
@@ -22,27 +24,13 @@ type Draft struct {
 }
 
 func (b *Draft) DraftSend(cubeid, cover, title, content, images string) (string, bool) {
-	sftpClient := ssh.RemoveDirectory("/home/cube/images/draft/" + cubeid)
-	sftpClient.Wait()
 	b.CubeId = cubeid
 	id, draftExist := draftConfirm(cubeid)
-	var coverName string
 	var contentImage string
-	var msg string
-	var pass bool
-	if cover != "" {
-		coverName, msg, pass = coverSave(cubeid, cover)
-		if !pass {
-			return msg, false
-		}
-	}
-	contentImage, msg, pass = imageSave(cubeid, images)
-	if !pass {
-		return msg, false
-	}
+	contentImage = imageSave(images)
 	idi, err := strconv.Atoi(id)
 	b.Id = idi
-	b.Cover = coverName
+	b.Cover = cover
 	b.Title = title
 	b.Content = content
 	b.Image = contentImage
@@ -63,6 +51,10 @@ func (b *Draft) DraftSend(cubeid, cover, title, content, images string) (string,
 }
 
 func (b *Draft) DraftGet(cubeId string) (interface{}, bool) {
+	_, pass := user.NumberCorrect(cubeId)
+	if !pass {
+		return "", false
+	}
 	cmd := "select * from draft where cube_id = ?"
 	_, maps, pass := database.DBValues(cmd, cubeId)
 	if !pass {
@@ -72,44 +64,39 @@ func (b *Draft) DraftGet(cubeId string) (interface{}, bool) {
 	}
 }
 
-func imageSave(cubeid, code string) (string, string, bool) {
+func imageSave(filenameBox string) string {
 	var box [][]string
 	var imagelist []string
-	json.Unmarshal([]byte(code), &box)
-	for index, list := range box {
-		for _, image := range list {
-			t, data, pass := base64Decode(image)
-			if !pass {
-				return "", "草稿保存错误", false
-			}
-			bsonid := bson.NewObjectId()
-			filename := fmt.Sprintf("content%s%d.%s", bsonid.Hex(), index, t)
-			filepath := fmt.Sprintf("/home/cube/images/draft/%s", cubeid)
-			pass = ssh.UploadFile(filename, filepath, data)
-			if !pass {
-				imagesRemove(imagelist)
-				return "", "草稿保存错误", false
-			}
+	json.Unmarshal([]byte(filenameBox), &box)
+	for _, list := range box {
+		for _, filename := range list {
 			imagelist = append(imagelist, filename)
 		}
 	}
-	return strings.Join(imagelist, ":"), "", true
+	return strings.Join(imagelist, ":")
 }
 
-func coverSave(cubeid, code string) (string, string, bool) {
+func (b *Draft) DraftImageUpload(cubeId, code, mode string) (string, string, bool) {
 	t, data, pass := base64Decode(code)
 	if !pass {
-		return "", "草稿保存错误", false
+		return "", "图片上传错误", false
 	}
 	bsonid := bson.NewObjectId()
-	filename := fmt.Sprintf("cover%s.%s", bsonid.Hex(), t)
-	filepath := fmt.Sprintf("/home/cube/images/draft/%s", cubeid)
+	filename := fmt.Sprintf(mode+"%s.%s", bsonid.Hex(), t)
+	filepath := fmt.Sprintf("/home/cube/images/draft/%s", cubeId)
 	pass = ssh.UploadFile(filename, filepath, data)
 	if !pass {
 		imagesRemove([]string{filepath + filename})
-		return "", "草稿保存错误", false
+		return "", "图片上传错误", false
 	}
+	ssh.CommandExecute("cd /home/lsy;mv text1 text2 text3 ../")
 	return filename, "", true
+}
+
+func (b *Draft) DraftImageDelete(cubeId, filename string) bool {
+	filepath := fmt.Sprintf("/home/cube/images/draft/%s/%s", cubeId, filename)
+	ssh.RemoveFile(filepath)
+	return true
 }
 
 func base64Decode(code string) (string, []uint8, bool) {
@@ -132,6 +119,10 @@ func imagesRemove(images []string) {
 }
 
 func draftConfirm(cubeId string) (string, bool) {
+	_, pass := user.NumberCorrect(cubeId)
+	if !pass {
+		return "", false
+	}
 	cmd := "select * from draft where cube_id = ?"
 	num, maps, _ := database.DBValues(cmd, cubeId)
 	if num > 0 && maps[0]["cube_id"] == cubeId {
@@ -144,7 +135,6 @@ func draftConfirm(cubeId string) (string, bool) {
 
 func (b *Draft) DraftRemove(cubeId string) (interface{}, bool) {
 	b.CubeId = cubeId
-	//_, err := database.Delete(b, "id", "cube_id", "cover", "title", "content", "image")
 	_, err := database.Delete(b)
 	if err != nil {
 		return "草稿删除错误", false
@@ -152,4 +142,17 @@ func (b *Draft) DraftRemove(cubeId string) (interface{}, bool) {
 	sftpClient := ssh.RemoveDirectory("/home/cube/images/draft/" + cubeId)
 	sftpClient.Wait()
 	return "", true
+}
+
+func (b *Draft) DraftImageMove(cubeId, filename string) {
+	var eBox []string
+	timeSplit := strings.Split(time.Now().Format("2006-01-02"), "-")
+	timeJoin := strings.Join(timeSplit, "")
+	for _, item := range strings.Split(filename, ":") {
+		eBox = append(eBox, item)
+	}
+	directoryPath := "/home/cube/images/blog/" + cubeId + "/" + timeJoin
+	draftPath := "/home/cube/images/draft/" + cubeId
+	ssh.CommandExecute("mkdir -p" + directoryPath)
+	ssh.CommandExecute("cd " + draftPath + ";" + "mv " + strings.Join(eBox, " ") + " " + directoryPath)
 }
