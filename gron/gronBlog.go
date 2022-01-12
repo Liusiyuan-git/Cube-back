@@ -17,13 +17,34 @@ import (
 var label = map[string][]string{
 	"language":       []string{"python", "go", "java", "javaScript", "c++", "c"},
 	"middleware":     []string{"redis", "rabbitmq"},
-	"virtualization": []string{"docker", "kubernetes"},
+	"virtualization": []string{"docker", "kubernetes", "microServices"},
 	"database":       []string{"mysql"},
+	"basics":         []string{"network", "dataStructure", "operatingSystem", "computerComposition"},
 	"other":          []string{"live"},
 }
 
+var typeLibrary = map[string]string{
+	"python":              "Python",
+	"go":                  "Go",
+	"java":                "Java",
+	"javaScript":          "JavaScript",
+	"c++":                 "C++",
+	"c":                   "C",
+	"redis":               "Redis",
+	"rabbitmq":            "Rabbitmq",
+	"docker":              "Docker",
+	"kubernetes":          "kubernetes",
+	"microServices":       "微服务",
+	"mysql":               "Mysql",
+	"network":             "网络",
+	"dataStructure":       "数据结构和算法",
+	"operatingSystem":     "操作系统",
+	"computerComposition": "计算机组成原理",
+	"live":                "生活",
+}
+
 func cubeBlogNewUpdate() {
-	cmd := `select a.id, a.cube_id, a.cover, a.title, a.image, a.text, a.content, a.date, a.label, a.label_type, a.love, a.comment, a.collect,
+	cmd := `select a.id, a.cube_id, a.cover, a.title, a.image, a.text, a.date, a.label, a.label_type, a.love, a.comment, a.collect,
 	a.view, b.name, b.image as user_image FROM blog a inner join user b on a.cube_id = b.cube_id order by a.id desc`
 	num, maps, pass := database.DBValues(cmd)
 	if pass {
@@ -38,19 +59,24 @@ func cubeBlogNewUpdate() {
 
 func labelTypeBuild() map[string][]string {
 	return map[string][]string{
-		"all":        []string{},
-		"python":     []string{},
-		"go":         []string{},
-		"java":       []string{},
-		"javaScript": []string{},
-		"c++":        []string{},
-		"c":          []string{},
-		"redis":      []string{},
-		"rabbitmq":   []string{},
-		"docker":     []string{},
-		"kubernetes": []string{},
-		"mysql":      []string{},
-		"live":       []string{},
+		"all":                 []string{},
+		"python":              []string{},
+		"go":                  []string{},
+		"java":                []string{},
+		"javaScript":          []string{},
+		"c++":                 []string{},
+		"c":                   []string{},
+		"redis":               []string{},
+		"rabbitmq":            []string{},
+		"docker":              []string{},
+		"kubernetes":          []string{},
+		"mysql":               []string{},
+		"microServices":       []string{},
+		"network":             []string{},
+		"dataStructure":       []string{},
+		"operatingSystem":     []string{},
+		"computerComposition": []string{},
+		"live":                []string{},
 	}
 }
 
@@ -64,15 +90,24 @@ func cubeBlogDataSplit(maps []orm.Params, labelType map[string][]string) {
 			labelType[key] = append(labelType[key], s)
 		}
 		labelType["all"] = append(labelType["all"], s)
-		go cubeBlogDetailUpdate(item)
 		go cubeBlogCommentUpdate(fmt.Sprintf("%v", item["id"]))
 	}
 }
 
-func cubeBlogDetailUpdate(blogDetail orm.Params) {
-	id := fmt.Sprintf("%v", blogDetail["id"])
-	bjson, _ := json.Marshal(blogDetail)
-	redis.HSet("blog_detail", id, string(bjson))
+func cubeBlogDetailUpdate() {
+	txpipeline := redis.TxPipeline()
+	cmd := `select a.id, a.cube_id, a.cover, a.title, a.image, a.text, a.date, a.label, a.label_type, a.love, a.comment, a.collect,
+	a.view, b.name, b.image as user_image FROM blog a inner join user b on a.cube_id = b.cube_id order by a.id desc`
+	_, maps, pass := database.DBValues(cmd)
+	if pass {
+		for _, item := range maps {
+			id := fmt.Sprintf("%v", item["id"])
+			bjson, _ := json.Marshal(item)
+			txpipeline.HSet("blog_detail", id, string(bjson))
+		}
+	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func cubeBlogCommentUpdate(blogid string) {
@@ -80,6 +115,7 @@ func cubeBlogCommentUpdate(blogid string) {
 	num, maps, pass := database.DBValues(cmd, blogid)
 	key := "blog_detail_comment_" + blogid
 	if pass {
+		txpipeline := redis.TxPipeline()
 		if num != 0 {
 			var l = redis.LLen(key)
 			if l <= num {
@@ -87,29 +123,27 @@ func cubeBlogCommentUpdate(blogid string) {
 					bjson, _ := json.Marshal(maps[i])
 					redisValue := string(bjson)
 					if i+1 > l {
-						redis.RPush(key, redisValue)
+						txpipeline.RPush(key, redisValue)
 					} else {
-						redis.LSet(key, i, redisValue)
+						txpipeline.LSet(key, i, redisValue)
 					}
 				}
 			} else {
 				for i := int64(0); i < num; i++ {
 					bjson, _ := json.Marshal(maps[i])
 					redisValue := string(bjson)
-					redis.LSet(key, i, redisValue)
+					txpipeline.LSet(key, i, redisValue)
 				}
-				redis.LTrim(key, 0, num-1)
+				txpipeline.LTrim(key, 0, num-1)
 			}
 		} else {
-			redis.LTrim(key, 1, 0)
+			txpipeline.LTrim(key, 1, 0)
 		}
-		cubeBlogProfileCommentRedisSet(blogid, num)
+		txpipeline.HSet("blog_profile_"+blogid, "comment", fmt.Sprintf("%v", num))
+		txpipeline.Exec()
+		txpipeline.Close()
 		cubeBlogProfileCommentDbSet(blogid, num)
 	}
-}
-
-func cubeBlogProfileCommentRedisSet(blogid string, num int64) {
-	redis.HSet("blog_profile_"+blogid, "comment", fmt.Sprintf("%v", num))
 }
 
 func cubeBlogProfileCommentDbSet(blogid string, num int64) {
@@ -155,20 +189,23 @@ func dataConvertToString(value interface{}) string {
 func cubeBlogDataSet(num int64, maps []string, mode string) {
 	key := "blog_" + mode
 	l := redis.LLen(key)
+	txpipeline := redis.TxPipeline()
 	if l <= num {
 		for i := int64(0); i < num; i++ {
 			if i+1 > l {
-				redis.RPush(key, maps[i])
+				txpipeline.RPush(key, maps[i])
 			} else {
-				redis.LSet(key, i, maps[i])
+				txpipeline.LSet(key, i, maps[i])
 			}
 		}
 	} else {
 		for i := int64(0); i < num; i++ {
-			redis.LSet(key, i, maps[i])
+			txpipeline.LSet(key, i, maps[i])
 		}
-		redis.LTrim(key, 0, num-1)
+		txpipeline.LTrim(key, 0, num-1)
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func cubeBlogDataFilterSet(mode string, labelType map[string][]string) {
@@ -185,36 +222,14 @@ func cubeBlogDataFilterSet(mode string, labelType map[string][]string) {
 	}
 }
 
-func cubeBlogDetailClean() {
-	cmd := `select * from blog`
-	_, maps, pass := database.DBValues(cmd)
-	if pass {
-		l := redis.HGetAll("blog_detail")
-		if l != nil {
-			for key := range l {
-				var keyExits = false
-				for _, item := range maps {
-					if key == item["id"] {
-						keyExits = true
-						break
-					}
-				}
-				if !keyExits {
-					redis.HDel("blog_detail", key)
-					redis.Del("blog_detail_" + key + "_get")
-					redis.Del("blog_detail_" + key + "_comment_get")
-					redis.Del("blog_detail_comment_" + key)
-				}
-			}
-		}
-	}
-}
-
 func cubeBlogProfileRedisSet(maps []orm.Params) {
+	txpipeline := redis.TxPipeline()
 	for _, item := range maps {
 		id := fmt.Sprintf("%v", item["id"])
-		redis.HMSet("blog_profile_"+id, map[string]interface{}{"love": item["love"], "view": item["view"]})
+		txpipeline.HMSet("blog_profile_"+id, map[string]interface{}{"love": item["love"], "view": item["view"]})
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func cubeBlogEsSet(num int, maps []orm.Params) {
@@ -222,7 +237,7 @@ func cubeBlogEsSet(num int, maps []orm.Params) {
 	if num >= EsLen {
 		for index, item := range maps {
 			var box = map[string]interface{}{}
-			box["label_type"] = item["label_type"].(string)
+			box["label_type"] = typeLibrary[item["label_type"].(string)]
 			box["name"] = item["name"].(string)
 			box["text"] = item["text"].(string)
 			box["title"] = item["title"].(string)
@@ -239,7 +254,7 @@ func cubeBlogEsSet(num int, maps []orm.Params) {
 		for index, item := range EsMaps {
 			if (index + 1) <= num {
 				var box = map[string]interface{}{}
-				box["label_type"] = maps[index]["label_type"].(string)
+				box["label_type"] = typeLibrary[maps[index]["label_type"].(string)]
 				box["user_image"] = maps[index]["user_image"].(string)
 				box["name"] = maps[index]["name"].(string)
 				box["text"] = maps[index]["text"].(string)
@@ -262,7 +277,7 @@ func cubeBlogEsSet(num int, maps []orm.Params) {
 func cubeBlogCollectUpdate() {
 	cmd := `SELECT * from collect`
 	_, maps, pass := database.DBValues(cmd)
-	if !pass {
+	if pass {
 		splitBox := cubeCollectDateSplit(maps)
 		cubeBlogCollectRedisUpdate(splitBox)
 		cubeBlogCollectDbUpdate(splitBox)
@@ -284,9 +299,12 @@ func cubeCollectDateSplit(maps []orm.Params) map[string]int {
 }
 
 func cubeBlogCollectRedisUpdate(splitBox map[string]int) {
+	txpipeline := redis.TxPipeline()
 	for k, v := range splitBox {
-		redis.HSet("blog_profile_"+k, "collect", fmt.Sprintf("%v", v))
+		txpipeline.HSet("blog_profile_"+k, "collect", fmt.Sprintf("%v", v))
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func cubeBlogCollectDbUpdate(splitBox map[string]int) {
@@ -307,16 +325,31 @@ func cubeBlogCleanAll() {
 	if pass {
 		cubeBlogCleanRedisAll(maps)
 		cubeBlogCleanImageAll(maps)
+		cubeBlogCleanConfirm()
 	}
 }
 
+func cubeBlogCleanConfirm() {
+	cmd := `truncate table delete_blog`
+	database.DBValues(cmd)
+}
+
 func cubeBlogCleanRedisAll(maps []orm.Params) {
+	txpipeline := redis.TxPipeline()
 	for _, item := range maps {
 		blogId, _ := item["blog_id"].(string)
-		redis.HDel("blog_detail", blogId)
-		redis.Del("blog_detail_comment_" + blogId)
-		redis.Del("blog_profile_" + blogId)
+		txpipeline.HDel("blog_detail", blogId)
+		txpipeline.HDel("blog_message_detail", "cover_"+blogId)
+		txpipeline.HDel("blog_message_detail", "title_"+blogId)
+		txpipeline.HDel("blog_message_detail", "date_"+blogId)
+		txpipeline.HDel("blog_message_detail", "type_"+blogId)
+		txpipeline.Del("blog_detail_comment_" + blogId)
+		txpipeline.Del("blog_profile_" + blogId)
+		txpipeline.Del("blog_detail_" + blogId + "_get")
+		txpipeline.Del("blog_detail_" + blogId + "_comment_get")
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func cubeBlogCleanImageAll(maps []orm.Params) {

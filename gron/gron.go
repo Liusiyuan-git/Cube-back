@@ -15,15 +15,15 @@ func init() {
 	c.AddFunc(gron.Every(360*time.Second), func() {
 		cubeBlogNewUpdate()
 		cubeBlogHotUpdate()
+		cubeBlogDetailUpdate()
 		cubeBlogCollectUpdate()
-		cubeBlogCleanAll()
 	})
-	c.AddFunc(gron.Every(420*time.Second), func() {
+	c.AddFunc(gron.Every(4*time.Second), func() {
 		userProfileUpdate()
 	})
 	c.AddFunc(gron.Every(86400*time.Second), func() {
-		cubeBlogDetailClean()
-		cubeTalkDetailClean()
+		cubeBlogCleanAll()
+		cubeTalkCleanAll()
 	})
 	c.Start()
 }
