@@ -19,6 +19,7 @@ func userProfileUpdate() {
 	userProfileCollectUpdate(userMaps)
 	userProfileLeaveUpdate(userMaps)
 	userProfileCareUpdate(userMaps)
+	userProfileMessageUpdate(userMaps)
 }
 
 func userProfileInformationUpdate() []orm.Params {
@@ -26,13 +27,16 @@ func userProfileInformationUpdate() []orm.Params {
 	num, maps, pass := database.DBValues(cmd)
 	if num != 0 && pass {
 		userEsUpdate(int(num), maps)
+		txpipeline := redis.TxPipeline()
 		for _, item := range maps {
 			cubeId := fmt.Sprintf("%v", item["cube_id"])
 			key := "user_profile_" + cubeId
-			redis.HSet(key, "name", fmt.Sprintf("%v", item["name"]))
-			redis.HSet(key, "image", fmt.Sprintf("%v", item["image"]))
-			redis.HSet(key, "introduce", fmt.Sprintf("%v", item["introduce"]))
+			txpipeline.HSet(key, "name", fmt.Sprintf("%v", item["name"]))
+			txpipeline.HSet(key, "image", fmt.Sprintf("%v", item["image"]))
+			txpipeline.HSet(key, "introduce", fmt.Sprintf("%v", item["introduce"]))
 		}
+		txpipeline.Exec()
+		txpipeline.Close()
 	}
 	return maps
 }
@@ -47,21 +51,23 @@ func userProfileTalkUpdate(userMaps []orm.Params) {
 	}
 }
 
-func userTalkClean(userMaps []orm.Params, userBlogBox map[string][]string) {
+func userTalkClean(userMaps []orm.Params, userTalkBox map[string][]string) {
+	txpipeline := redis.TxPipeline()
 	for _, item := range userMaps {
 		cubeId := item["cube_id"].(string)
 		key := "profile_talk_" + cubeId
-		if _, ok := userBlogBox[cubeId]; !ok {
-			redis.Del(key)
+		if _, ok := userTalkBox[cubeId]; !ok {
+			txpipeline.Del(key)
+			txpipeline.HSet("user_profile_"+cubeId, "talk", strconv.Itoa(0))
 			userDataBaseTalkUpdate(cubeId, 0)
-			userRedisTalkUpdate(cubeId, 0)
 		}
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func userProfileBlogUpdate(userMaps []orm.Params) {
-	cmd := `select a.id, a.cube_id, a.cover, a.title, a.image, a.text, a.content, a.date, a.label, a.label_type, a.love, a.comment, a.collect,
-	a.view, b.name FROM blog a inner join user b on a.cube_id = b.cube_id order by a.id desc`
+	cmd := `select a.id, a.cube_id, a.cover, a.title, a.image, a.date, a.label, a.label_type, b.name FROM blog a inner join user b on a.cube_id = b.cube_id order by a.id desc`
 	_, maps, pass := database.DBValues(cmd)
 	if pass {
 		userBlogBox := userSplit(maps)
@@ -71,15 +77,18 @@ func userProfileBlogUpdate(userMaps []orm.Params) {
 }
 
 func userBlogClean(userMaps []orm.Params, userBlogBox map[string][]string) {
+	txpipeline := redis.TxPipeline()
 	for _, item := range userMaps {
 		cubeId := item["cube_id"].(string)
 		key := "profile_blog_" + cubeId
 		if _, ok := userBlogBox[cubeId]; !ok {
-			redis.Del(key)
+			txpipeline.Del(key)
+			txpipeline.HSet("user_profile_"+cubeId, "blog", strconv.Itoa(0))
 			userDataBaseBlogUpdate(cubeId, 0)
-			userRedisBlogUpdate(cubeId, 0)
 		}
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func userBlogUpdate(box map[string][]string) {
@@ -88,26 +97,29 @@ func userBlogUpdate(box map[string][]string) {
 		var l = redis.LLen(key)
 		var num = int64(len(v))
 		var i int64
+		txpipeline := redis.TxPipeline()
 		if num != 0 {
 			if l <= num {
 				for i = 0; i < num; i++ {
 					if i+1 > l {
-						redis.RPush(key, v[i])
+						txpipeline.RPush(key, v[i])
 					} else {
-						redis.LSet(key, i, v[i])
+						txpipeline.LSet(key, i, v[i])
 					}
 				}
 			} else {
 				for i = 0; i < num; i++ {
-					redis.LSet(key, i, v[i])
+					txpipeline.LSet(key, i, v[i])
 				}
-				redis.LTrim(key, 0, num-1)
+				txpipeline.LTrim(key, 0, num-1)
 			}
 		} else {
-			redis.LTrim(key, 1, 0)
+			txpipeline.LTrim(key, 1, 0)
 		}
 		userDataBaseBlogUpdate(k, len(v))
-		userRedisBlogUpdate(k, len(v))
+		txpipeline.HSet("user_profile_"+k, "blog", strconv.Itoa(len(v)))
+		txpipeline.Exec()
+		txpipeline.Close()
 	}
 }
 
@@ -117,26 +129,29 @@ func userTalkUpdate(box map[string][]string) {
 		var l = redis.LLen(key)
 		var num = int64(len(v))
 		var i int64
+		txpipeline := redis.TxPipeline()
 		if num != 0 {
 			if l <= num {
 				for i = 0; i < num; i++ {
 					if i+1 > l {
-						redis.RPush(key, v[i])
+						txpipeline.RPush(key, v[i])
 					} else {
-						redis.LSet(key, i, v[i])
+						txpipeline.LSet(key, i, v[i])
 					}
 				}
 			} else {
 				for i = 0; i < num; i++ {
-					redis.LSet(key, i, v[i])
+					txpipeline.LSet(key, i, v[i])
 				}
-				redis.LTrim(key, 0, num-1)
+				txpipeline.LTrim(key, 0, num-1)
 			}
 		} else {
-			redis.LTrim(key, 1, 0)
+			txpipeline.LTrim(key, 1, 0)
 		}
 		userDataBaseTalkUpdate(k, len(v))
-		userRedisTalkUpdate(k, len(v))
+		txpipeline.HSet("user_profile_"+k, "talk", strconv.Itoa(len(v)))
+		txpipeline.Exec()
+		txpipeline.Close()
 	}
 }
 
@@ -150,10 +165,6 @@ func userDataBaseBlogUpdate(cubeId string, length int) {
 	}
 }
 
-func userRedisBlogUpdate(cubeId string, length int) {
-	redis.HSet("user_profile_"+cubeId, "blog", strconv.Itoa(length))
-}
-
 func userDataBaseTalkUpdate(cubeId string, length int) {
 	b := new(user.User)
 	b.CubeId = cubeId
@@ -162,10 +173,6 @@ func userDataBaseTalkUpdate(cubeId string, length int) {
 	if err != nil {
 		log.Error(err)
 	}
-}
-
-func userRedisTalkUpdate(cubeId string, length int) {
-	redis.HSet("user_profile_"+cubeId, "talk", strconv.Itoa(length))
 }
 
 func userSplit(maps []orm.Params) map[string][]string {
@@ -184,7 +191,7 @@ func userSplit(maps []orm.Params) map[string][]string {
 func userCollectDateSplit(maps []orm.Params) map[string][]interface{} {
 	var splitBox = map[string][]interface{}{}
 	for _, item := range maps {
-		id := item["cube_id"].(string)
+		id := item["collect_cube_id"].(string)
 		_, ok := splitBox[id]
 		if !ok {
 			splitBox[id] = []interface{}{item}
@@ -196,7 +203,7 @@ func userCollectDateSplit(maps []orm.Params) map[string][]interface{} {
 }
 
 func userProfileCollectUpdate(userMaps []orm.Params) {
-	cmd := `SELECT b.id, b.cube_id, b.title, b.cover, b.date, b.title, b.label_type FROM collect a INNER JOIN blog b ON a.blog_id = b.id ORDER BY a.id DESC`
+	cmd := `SELECT a.cube_id as collect_cube_id, b.id, b.cube_id, b.title, b.cover, b.date, b.title, b.label_type FROM collect a INNER JOIN blog b ON a.blog_id = b.id ORDER BY a.id DESC`
 	num, maps, pass := database.DBValues(cmd)
 	if pass {
 		splitBox := userCollectDateSplit(maps)
@@ -206,19 +213,22 @@ func userProfileCollectUpdate(userMaps []orm.Params) {
 	}
 }
 
-func userBlogCollectClean(userMaps []orm.Params, userBlogBox map[string][]interface{}) {
+func userBlogCollectClean(userMaps []orm.Params, splitBox map[string][]interface{}) {
+	txpipeline := redis.TxPipeline()
 	for _, item := range userMaps {
 		cubeId := item["cube_id"].(string)
 		key := "user_collect_" + cubeId
-		if _, ok := userBlogBox[cubeId]; !ok {
-			redis.Del(key)
-			redis.HSet("user_profile_"+cubeId, "collect", "0")
+		if _, ok := splitBox[cubeId]; !ok {
+			txpipeline.Del(key)
+			txpipeline.HSet("user_profile_"+cubeId, "collect", "0")
 			u := new(user.User)
 			u.CubeId = cubeId
 			u.Collect = 0
 			database.Update(u, "collect")
 		}
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func userBlogCollectDbUpdate(splitBox map[string][]interface{}) {
@@ -234,6 +244,7 @@ func userBlogCollectRedisUpdate(number int64, splitBox map[string][]interface{})
 	for k, v := range splitBox {
 		key := "user_collect_" + k
 		var num = int64(len(v))
+		txpipeline := redis.TxPipeline()
 		if number != 0 {
 			var l = redis.LLen(key)
 			var i int64
@@ -242,23 +253,25 @@ func userBlogCollectRedisUpdate(number int64, splitBox map[string][]interface{})
 					bjson, _ := json.Marshal(v[i])
 					redisValue := string(bjson)
 					if i+1 > l {
-						redis.RPush(key, redisValue)
+						txpipeline.RPush(key, redisValue)
 					} else {
-						redis.LSet(key, i, redisValue)
+						txpipeline.LSet(key, i, redisValue)
 					}
 				}
 			} else {
 				for i = 0; i < num; i++ {
 					bjson, _ := json.Marshal(v[i])
 					redisValue := string(bjson)
-					redis.LSet(key, i, redisValue)
+					txpipeline.LSet(key, i, redisValue)
 				}
-				redis.LTrim(key, 0, num-1)
+				txpipeline.LTrim(key, 0, num-1)
 			}
 		} else {
-			redis.LTrim(key, 1, 0)
+			txpipeline.LTrim(key, 1, 0)
 		}
-		redis.HSet("user_profile_"+k, "collect", fmt.Sprintf("%v", num))
+		txpipeline.HSet("user_profile_"+k, "collect", fmt.Sprintf("%v", num))
+		txpipeline.Exec()
+		txpipeline.Close()
 	}
 }
 
@@ -272,12 +285,13 @@ func userProfileLeaveUpdate(userMaps []orm.Params) {
 	}
 }
 
-func userLeaveClean(userMaps []orm.Params, userBlogBox map[string][]string) {
+func userLeaveClean(userMaps []orm.Params, userLeaveBox map[string][]string) {
+	txpipeline := redis.TxPipeline()
 	for _, item := range userMaps {
 		cubeId := item["cube_id"].(string)
 		key := "user_leave_" + cubeId
-		if _, ok := userBlogBox[cubeId]; !ok {
-			redis.Del(key)
+		if _, ok := userLeaveBox[cubeId]; !ok {
+			txpipeline.Del(key)
 			b := new(user.User)
 			b.CubeId = cubeId
 			b.LeavingMessage = 0
@@ -287,6 +301,8 @@ func userLeaveClean(userMaps []orm.Params, userBlogBox map[string][]string) {
 			}
 		}
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func userLeaveUpdate(box map[string][]string) {
@@ -295,24 +311,27 @@ func userLeaveUpdate(box map[string][]string) {
 		var l = redis.LLen(key)
 		var num = int64(len(v))
 		var i int64
+		txpipeline := redis.TxPipeline()
 		if num != 0 {
 			if l <= num {
 				for i = 0; i < num; i++ {
 					if i+1 > l {
-						redis.RPush(key, v[i])
+						txpipeline.RPush(key, v[i])
 					} else {
-						redis.LSet(key, i, v[i])
+						txpipeline.LSet(key, i, v[i])
 					}
 				}
 			} else {
 				for i = 0; i < num; i++ {
-					redis.LSet(key, i, v[i])
+					txpipeline.LSet(key, i, v[i])
 				}
-				redis.LTrim(key, 0, num-1)
+				txpipeline.LTrim(key, 0, num-1)
 			}
 		} else {
-			redis.LTrim(key, 1, 0)
+			txpipeline.LTrim(key, 1, 0)
 		}
+		txpipeline.Exec()
+		txpipeline.Close()
 		userDataBaseLeaveUpdate(k, len(v))
 	}
 }
@@ -324,6 +343,59 @@ func userDataBaseLeaveUpdate(cubeId string, length int) {
 	_, err := database.Update(b, "leaving_message")
 	if err != nil {
 		log.Error(err)
+	}
+}
+
+func userProfileMessageUpdate(userMaps []orm.Params) {
+	cmd := `select id, cube_id, send_id, date, text, blog, talk, care, message, blog_comment, talk_comment, blog_id, talk_id FROM message order by id desc`
+	_, maps, pass := database.DBValues(cmd)
+	if pass {
+		userMessageBox := userSplit(maps)
+		userMessageUpdate(userMessageBox)
+		userMessageClean(userMaps, userMessageBox)
+	}
+}
+
+func userMessageClean(userMaps []orm.Params, userMessageBox map[string][]string) {
+	txpipeline := redis.TxPipeline()
+	for _, item := range userMaps {
+		cubeId := item["cube_id"].(string)
+		key := "user_message_" + cubeId
+		if _, ok := userMessageBox[cubeId]; !ok {
+			txpipeline.Del(key)
+		}
+	}
+	txpipeline.Exec()
+	txpipeline.Close()
+}
+
+func userMessageUpdate(box map[string][]string) {
+	for k, v := range box {
+		var key = "user_message_" + k
+		var l = redis.LLen(key)
+		var num = int64(len(v))
+		var i int64
+		txpipeline := redis.TxPipeline()
+		if num != 0 {
+			if l <= num {
+				for i = 0; i < num; i++ {
+					if i+1 > l {
+						txpipeline.RPush(key, v[i])
+					} else {
+						txpipeline.LSet(key, i, v[i])
+					}
+				}
+			} else {
+				for i = 0; i < num; i++ {
+					txpipeline.LSet(key, i, v[i])
+				}
+				txpipeline.LTrim(key, 0, num-1)
+			}
+		} else {
+			txpipeline.LTrim(key, 1, 0)
+		}
+		txpipeline.Exec()
+		txpipeline.Close()
 	}
 }
 
@@ -369,9 +441,10 @@ func userCaredSplit(maps []orm.Params) map[string][]string {
 func userCareUpdate(box map[string][]string) {
 	for k, v := range box {
 		key := "user_care_" + k
-		redis.Del(key)
+		txpipeline := redis.TxPipeline()
+		txpipeline.Del(key)
 		for _, item := range v {
-			redis.HSet(key, item, "1")
+			txpipeline.HSet(key, item, "1")
 		}
 		b := new(user.User)
 		b.CubeId = k
@@ -380,16 +453,19 @@ func userCareUpdate(box map[string][]string) {
 		if err != nil {
 			log.Error(err)
 		}
-		redis.HSet("user_profile_"+k, "care", fmt.Sprintf("%v", len(v)))
+		txpipeline.HSet("user_profile_"+k, "care", fmt.Sprintf("%v", len(v)))
+		txpipeline.Exec()
+		txpipeline.Close()
 	}
 }
 
 func userCaredUpdate(box map[string][]string) {
 	for k, v := range box {
 		key := "user_cared_" + k
-		redis.Del(key)
+		txpipeline := redis.TxPipeline()
+		txpipeline.Del(key)
 		for _, item := range v {
-			redis.HSet(key, item, "1")
+			txpipeline.HSet(key, item, "1")
 		}
 		b := new(user.User)
 		b.CubeId = k
@@ -398,28 +474,36 @@ func userCaredUpdate(box map[string][]string) {
 		if err != nil {
 			log.Error(err)
 		}
-		redis.HSet("user_profile_"+k, "cared", fmt.Sprintf("%v", len(v)))
+		txpipeline.HSet("user_profile_"+k, "cared", fmt.Sprintf("%v", len(v)))
+		txpipeline.Exec()
+		txpipeline.Close()
 	}
 }
 
 func userCareClean(userMaps []orm.Params, box map[string][]string) {
+	txpipeline := redis.TxPipeline()
 	for _, item := range userMaps {
 		cubeId := item["cube_id"].(string)
 		key := "user_care_" + cubeId
 		if _, ok := box[cubeId]; !ok {
-			redis.Del(key)
+			txpipeline.Del(key)
 		}
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func userCaredClean(userMaps []orm.Params, box map[string][]string) {
+	txpipeline := redis.TxPipeline()
 	for _, item := range userMaps {
 		cubeId := item["cube_id"].(string)
 		key := "user_cared_" + cubeId
 		if _, ok := box[cubeId]; !ok {
-			redis.Del(key)
+			txpipeline.Del(key)
 		}
 	}
+	txpipeline.Exec()
+	txpipeline.Close()
 }
 
 func userEsUpdate(num int, maps []orm.Params) {
@@ -443,7 +527,7 @@ func userEsUpdate(num int, maps []orm.Params) {
 				box["introduce"] = maps[index]["introduce"].(string)
 				box["image"] = maps[index]["image"].(string)
 				box["name"] = maps[index]["name"].(string)
-				box["index"], _ = strconv.Atoi(maps[index]["index"].(string))
+				box["index"], _ = strconv.Atoi(maps[index]["id"].(string))
 				box["cube_id"] = maps[index]["cube_id"].(string)
 				bjson, _ := json.Marshal(box)
 				redisValue := string(bjson)
