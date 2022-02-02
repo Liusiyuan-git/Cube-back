@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "Cube-back/cube"
 	_ "Cube-back/database"
 	_ "Cube-back/elasticsearch"
 	_ "Cube-back/gron"
@@ -10,6 +11,7 @@ import (
 	_ "Cube-back/rabbitmq"
 	_ "Cube-back/redis"
 	_ "Cube-back/routers"
+	_ "Cube-back/snowflake"
 	_ "Cube-back/ssh"
 	beego "github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/filter/cors"
@@ -24,7 +26,7 @@ func insertFilter() {
 		AllowHeaders:     []string{"Origin", "Authorization", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type", "x-requested-with"},
 		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type"},
 		AllowCredentials: true,
-		AllowOrigins:     []string{"http://localhost:*", "http://127.0.0.1:*"},
+		AllowOrigins:     []string{"http://localhost:*", "http://127.0.0.1:*", "http://www.cube.fan:*"},
 	}))
 }
 

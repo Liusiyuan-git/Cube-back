@@ -6,6 +6,7 @@ import (
 	"Cube-back/models/user"
 	"Cube-back/redis"
 	"fmt"
+	Redis "github.com/go-redis/redis"
 )
 
 type Login struct {
@@ -13,13 +14,17 @@ type Login struct {
 }
 
 func (u *Login) LoginCount(count, password string) (string, string, string, string, bool) {
+	msg, pass := user.EmailCorrect(count)
+	if !pass {
+		return "", msg, "", "", false
+	}
 	cubeId, p, userName, image, pass := u.CountConfirm(count)
 	if !pass {
-		return cubeId, p, "", "", false
+		return "", p, "", "", false
 	}
 	pass = crypt.Confirm(password, p)
 	if !pass {
-		return cubeId, "密码错误", "", "", false
+		return "", "密码错误", "", "", false
 	}
 	return cubeId, "", userName, image, true
 }
@@ -47,9 +52,12 @@ func (u *Login) CountConfirm(count string) (string, string, string, string, bool
 			cubeId := fmt.Sprintf("%v", maps[0]["cube_id"])
 			userName := fmt.Sprintf("%v", maps[0]["name"])
 			image := fmt.Sprintf("%v", maps[0]["image"])
-			sessionRedis(cubeId, userName)
-			userImageRedis(cubeId, image)
-			userMessageRedis(cubeId)
+			txpipeline := redis.TxPipeline()
+			sessionRedis(cubeId, userName, txpipeline)
+			userImageRedis(cubeId, image, txpipeline)
+			userMessageRedis(cubeId, txpipeline)
+			txpipeline.Exec()
+			txpipeline.Close()
 			return cubeId, password, userName, image, true
 		} else {
 			return "", "账号不存在", "", "", false
@@ -57,18 +65,18 @@ func (u *Login) CountConfirm(count string) (string, string, string, string, bool
 	}
 }
 
-func userMessageRedis(cubeId string) {
-	redis.HIncrBy("user_message_profile_"+cubeId, "total", 0)
-	redis.HIncrBy("user_message_profile_"+cubeId, "blog", 0)
-	redis.HIncrBy("user_message_profile_"+cubeId, "talk", 0)
+func userMessageRedis(cubeId string, txpipeline Redis.Pipeliner) {
+	txpipeline.HIncrBy("user_message_profile_"+cubeId, "total", 0)
+	txpipeline.HIncrBy("user_message_profile_"+cubeId, "blog", 0)
+	txpipeline.HIncrBy("user_message_profile_"+cubeId, "talk", 0)
 }
 
-func sessionRedis(cubeid, name string) {
-	redis.HSet("session", cubeid, name)
+func sessionRedis(cubeid, name string, txpipeline Redis.Pipeliner) {
+	txpipeline.HSet("session", cubeid, name)
 }
 
-func userImageRedis(cubeId, image string) {
-	redis.HSet("userImage", cubeId, image)
+func userImageRedis(cubeId, image string, txpipeline Redis.Pipeliner) {
+	txpipeline.HSet("userImage", cubeId, image)
 }
 
 func PhoneConfirm(phone string) (string, string, string, string, bool) {

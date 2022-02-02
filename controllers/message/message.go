@@ -76,3 +76,14 @@ func (c *Controller) MessageProfileUserBlogGet() {
 	result["content"] = content
 	c.DataCallBack(result, pass)
 }
+
+func (c *Controller) MessageDelete() {
+	data := c.RequestBodyData()
+	id := data["id"]
+	cubeId := data["cube_id"]
+	index := data["index"]
+	msg, pass := m.MessageDelete(id, cubeId, index)
+	result := make(map[string]interface{})
+	result["msg"] = msg
+	c.DataCallBack(result, pass)
+}
