@@ -1,12 +1,14 @@
 package message
 
 import (
-	"encoding/json"
+	"Cube-back/models/user"
 	"strings"
 )
 
 type Message struct {
 	Id          int
+	BlogId      int
+	TalkId      int
 	CubeId      string
 	SendId      string
 	Text        string `orm:"type(text)"`
@@ -20,18 +22,19 @@ type Message struct {
 }
 
 func (m *Message) UserMessageGet(cubeId, page string) (interface{}, int64, bool) {
-	var dataBlock []map[string]interface{}
-	talkData, length := userMessageRedisGet(cubeId, page)
-	if len(talkData) == 0 {
-		talkDb, length, pass := userMessageDbGet(cubeId)
-		return talkDb, length, pass
+	_, pass := user.NumberCorrect(cubeId)
+	if !pass {
+		return []string{}, 0, false
 	}
-	for _, item := range talkData {
-		var m map[string]interface{}
-		json.Unmarshal([]byte(item), &m)
-		dataBlock = append(dataBlock, m)
+	messageData, length := userMessageRedisGet(cubeId, page)
+	if len(messageData) == 0 {
+		messageDb, length, pass := userMessageDbGet(cubeId)
+		if !pass {
+			return []string{}, 0, false
+		}
+		return userMessageDbRedisDetailGet(messageDb, cubeId), length, pass
 	}
-	return dataBlock, length, true
+	return userMessageRedisDetailGet(messageData), length, true
 }
 
 func (m *Message) MessageProfileGet(cubeId string) interface{} {
@@ -66,4 +69,17 @@ func (m *Message) MessageProfileUserBlogGet(cubeId, idBox string) (interface{}, 
 		blogIdBox = append(blogIdBox, "blog_"+item)
 	}
 	return messageProfileUserBlogRedisGet(cubeId, blogIdBox), true
+}
+
+func (m *Message) MessageDelete(id, cubeId, index string) (string, bool) {
+	msg, pass := user.NumberCorrect(cubeId)
+	if !pass {
+		return msg, false
+	}
+	result, pass := messageDeleteDb(id)
+	if !pass {
+		return result, pass
+	}
+	messageDeleteRedis(id, cubeId, index)
+	return "", true
 }
